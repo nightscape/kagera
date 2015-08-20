@@ -1,19 +1,30 @@
 package io.process.statebox
 
-import spray.routing.HttpServiceActor
+import akka.actor.ActorSystem
+import akka.http.scaladsl.Http
+import akka.stream.ActorMaterializer
+import io.process.statebox.common.{ ActorSystemProvider, DefaultSettingsProvider }
+import io.process.statebox.http.Routes
 
+import scala.concurrent.{ ExecutionContextExecutor, ExecutionContext }
 
-object Main extends App {
+trait Services extends ActorSystemProvider {
 
-  // actor system for spray-can
+  implicit val system: ActorSystem = ActorSystem()
+  implicit val executor: ExecutionContextExecutor = system.dispatcher
+}
 
-  // actor system for statebox
+trait HttpApi extends Services
+  with Routes
+  with DefaultSettingsProvider
 
-  trait HttpApi extends HttpServiceActor with Services
+object Main extends App with HttpApi {
 
-  trait Services
+  implicit val materializer = ActorMaterializer()
+
+  Http().bindAndHandle(helloWorld, settings.http.interface, settings.http.port)
 
   scala.sys.ShutdownHookThread {
-
+    // Do some clean up
   }
 }

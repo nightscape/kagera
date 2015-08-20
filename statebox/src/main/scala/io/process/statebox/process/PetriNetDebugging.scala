@@ -6,7 +6,7 @@ import io.process.statebox.Transition
 object PetriNetDebugging {
   sealed trait Command
 
-  case class SetBreakPoint(t:Transition, receiver:ActorRef) extends Command
+  case class SetBreakPoint(t: Transition, receiver: ActorRef) extends Command
   case object Step extends Command
   case object Resume extends Command
   case class RemoveBreakPoint(t: Transition) extends Command
@@ -14,12 +14,12 @@ object PetriNetDebugging {
 
 trait PetriNetDebugging {
 
-  self:PetriNetActor =>
+  self: PetriNetActor ⇒
 
-  val breakPoints:Map[Transition, ActorRef]
+  val breakPoints: Map[Transition, ActorRef]
 
+  // override receive command
   override def receiveCommand: Unit = {
-
 
   }
 }
