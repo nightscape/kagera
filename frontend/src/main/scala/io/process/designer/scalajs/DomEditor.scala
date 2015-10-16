@@ -1,8 +1,8 @@
 package io.process.designer.scalajs
 
 import io.process.designer.model.Node
-import io.process.designer.ui._
-import io.process.geometry.Dimensions
+import io.process.common.draw.ui._
+import io.process.common.geometry.Dimensions
 
 import org.scalajs.dom
 import scala.scalajs.js.Dynamic.{ global ⇒ g }
@@ -12,9 +12,12 @@ class DomEditor(parent: dom.Element, val width: Int, val height: Int) extends Di
   var layers: List[(Node[_, _], dom.html.Canvas)] = List.empty
   val toolLayer = addCanvas(20)
 
-  Seq("mousemove" -> MouseMove, "mouseup" -> MouseUp, "mousedown" -> MouseDown).foreach {
-    case (name, event) ⇒ parent.addEventListener(name, mouseListener(event))
-  }
+  Seq(
+    "mousemove" -> MouseMove,
+    "mouseup" -> MouseUp,
+    "mousedown" -> MouseDown).foreach {
+      case (name, event) ⇒ parent.addEventListener(name, mouseListener(event))
+    }
 
   parent.addEventListener("wheel", wheelListener _)
 

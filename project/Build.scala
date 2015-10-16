@@ -24,44 +24,49 @@ object Build extends Build {
   )
 
   lazy val basicSettings = Seq(
-    organization := "io.process",
-    version := "0.1.0",
-    scalaVersion := targetScalaVersion,
+    organization  := "io.process",
+    version       := "0.1.0-SNAPSHOT",
+    scalaVersion  := targetScalaVersion,
     scalacOptions := basicScalacOptions,
-    incOptions := incOptions.value.withNameHashing(true)
+    incOptions    := incOptions.value.withNameHashing(true)
   )
 
-  lazy val appSettings = basicSettings ++ dependencySettings ++ formattingSettings
+  lazy val basicProjectSettings = basicSettings ++ dependencySettings ++ formattingSettings
+  
+  lazy val common = (crossProject.crossType(CrossType.Pure) in file("common"))
+    .settings(basicProjectSettings: _*)
+    .settings(name := "statebox-common")
+    .jvmSettings(libraryDependencies += "org.scalaz" %% "scalaz-core" % "7.1.3")
+    .jsSettings(libraryDependencies += "com.github.japgolly.fork.scalaz" %%% "scalaz-core" % "7.1.3")
+
+  lazy val commonJs = common.js
+  lazy val commonJvm = common.jvm
 
   lazy val statebox = Project("statebox-api", file("statebox"))
-    .settings(appSettings: _*)
-    .settings(assemblyJarName := "statebox.jar")
+    .settings(basicProjectSettings: _*)
     .settings(mainClass := Some("io.statebox.Main"))
-    .settings(libraryDependencies ++=
-    compile(
+    .settings(libraryDependencies ++= Seq(
       akkaActor,
       akkaPersistence,
       akkaSlf4j,
       akkaHttp,
       ficus,
-      graph,
+      graph, graphConstrained,
       logback,
-      scalaTime) ++
-      test(
-        akkaTestkit,
-        scalatest))
+      scalaTime,
+      akkaTestkit % "test",
+      scalatest   % "test"))
+    .dependsOn(commonJvm)
 
   lazy val frontend = Project("statebox-frontend", file("frontend"))
     .enablePlugins(ScalaJSPlugin)
     .settings(persistLauncher in Compile := true)
-    .settings(appSettings: _*)
-    .settings(libraryDependencies ++=
-    compile(
-      "org.scala-js" %%% "scalajs-dom" % "0.8.1",
+    .settings(basicProjectSettings: _*)
+    .settings(libraryDependencies ++= Seq(
+      "org.scala-js"                    %%% "scalajs-dom" % "0.8.1",
       "com.github.japgolly.fork.scalaz" %%% "scalaz-core" % "7.1.3",
-      "com.lihaoyi" %%% "scalatags" % "0.5.1"))
+      "com.lihaoyi"                     %%% "scalatags"   % "0.5.1"))
+    .dependsOn(commonJs)
 
-  lazy val root = Project("statebox", file("."))
-    .settings(basicSettings: _*)
-    .aggregate(statebox, frontend)
+  lazy val root = Project("statebox", file(".")).aggregate(commonJvm, commonJs, statebox, frontend)
 }

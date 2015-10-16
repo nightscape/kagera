@@ -1,4 +1,4 @@
-package io.process.geometry
+package io.process.common.geometry
 
 object GeometryCalc {
 
@@ -10,5 +10,13 @@ object GeometryCalc {
 
   def lineSegmentIS(l1: LineSegment, l2: LineSegment): Option[Point] = {
     None
+  }
+
+  def parallel(l1: LineSegment, l2: LineSegment): Boolean = {
+    false
+  }
+
+  def pointToLineDist = {
+
   }
 }
