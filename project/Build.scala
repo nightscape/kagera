@@ -3,6 +3,7 @@ import Keys._
 import sbtassembly.AssemblyKeys
 import org.scalajs.sbtplugin.ScalaJSPlugin
 import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport._
+import spray.revolver.RevolverPlugin.Revolver
 
 object Build extends Build {
 
@@ -31,7 +32,7 @@ object Build extends Build {
     incOptions    := incOptions.value.withNameHashing(true)
   )
 
-  lazy val basicProjectSettings = basicSettings ++ dependencySettings ++ formattingSettings
+  lazy val basicProjectSettings = basicSettings ++ dependencySettings ++ formattingSettings ++ Revolver.settings
   
   lazy val common = (crossProject.crossType(CrossType.Pure) in file("common"))
     .settings(basicProjectSettings: _*)
@@ -42,16 +43,12 @@ object Build extends Build {
   lazy val commonJs = common.js
   lazy val commonJvm = common.jvm
 
-  lazy val statebox = Project("statebox-api", file("statebox"))
+  lazy val stateboxApi = Project("statebox-api", file("statebox"))
     .settings(basicProjectSettings: _*)
     .settings(mainClass := Some("io.statebox.Main"))
     .settings(libraryDependencies ++= Seq(
-      akkaActor,
-      akkaPersistence,
-      akkaSlf4j,
-      akkaHttp,
-      ficus,
-      graph, graphConstrained,
+      akkaActor, akkaPersistence, akkaSlf4j,
+      akkaHttp, ficus, graph, graphConstrained, graphDot,
       logback,
       scalaTime,
       akkaTestkit % "test",
@@ -68,5 +65,5 @@ object Build extends Build {
       "com.lihaoyi"                     %%% "scalatags"   % "0.5.1"))
     .dependsOn(commonJs)
 
-  lazy val root = Project("statebox", file(".")).aggregate(commonJvm, commonJs, statebox, frontend)
+  lazy val root = Project("statebox", file(".")).aggregate(stateboxApi, frontend)
 }
