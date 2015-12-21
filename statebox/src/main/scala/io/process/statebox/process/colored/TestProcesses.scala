@@ -2,7 +2,7 @@ package io.process.statebox.process.colored
 
 object TestProcesses {
 
-  object sum {
+  val sum = {
 
     // places
     val a = Place[Int](id = 1, label = "a")
@@ -19,7 +19,7 @@ object TestProcesses {
     }
 
     // process topology
-    val sumProcess = process(
+    process(
       init ~> %(a, b),
       %(a, b) ~> sum,
       sum ~> c)

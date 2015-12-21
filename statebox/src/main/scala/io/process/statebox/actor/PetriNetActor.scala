@@ -1,7 +1,7 @@
 package io.process.statebox.actor
 
 import akka.actor._
-import io.process.statebox.actor.PetriNetActor.{ TransitionFired, NoFireableTransitions }
+import io.process.statebox.actor.PetriNetActor.{ GetState, TransitionFired, NoFireableTransitions }
 import io.process.statebox.actor.PetriNetDebugging.Step
 import io.process.statebox.process._
 
@@ -33,6 +33,7 @@ class PetriNetActor[T, P, M](process: PTProcess[P, T, M], initialMarking: M)(imp
   def receive = active(initialMarking)
 
   def active(marking: M): Receive = {
+    case GetState ⇒ sender() ! marking
     case Step ⇒
       process.enabledParameters(marking).headOption match {
         case None ⇒ sender() ! Status.Failure(NoFireableTransitions)
