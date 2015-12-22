@@ -1,9 +1,10 @@
 package io.process.statebox.actor
 
 import akka.actor._
-import io.process.statebox.actor.PetriNetActor.{ GetState, TransitionFired, NoFireableTransitions }
+import io.process.statebox.actor.PetriNetActor._
 import io.process.statebox.actor.PetriNetDebugging.Step
 import io.process.statebox.process._
+import io.process.statebox.process.simple._
 
 // states
 sealed trait ExecutionState
@@ -24,7 +25,6 @@ object PetriNetActor {
   sealed trait Event
 
   case class TransitionFired[T, P, M](transition: T, consumed: M, produced: M, meta: Any) extends Event
-
   case object NoFireableTransitions extends IllegalStateException
 }
 
@@ -35,10 +35,9 @@ class PetriNetActor[T, P, M](process: PTProcess[P, T, M], initialMarking: M)(imp
   def active(marking: M): Receive = {
     case GetState ⇒ sender() ! marking
     case Step ⇒
-      process.enabledParameters(marking).headOption match {
+      stepRandom[P, T, M](process, marking) match {
         case None ⇒ sender() ! Status.Failure(NoFireableTransitions)
-        case Some((t, enabledMarkings)) ⇒
-          val consume = enabledMarkings.head
+        case Some((t, consume)) ⇒
           val produce = process.fireTransition(consume)(t)
           val newMarking = marking.consume(consume).produce(produce)
           sender() ! TransitionFired(t, consume, produce, None)
