@@ -1,8 +1,7 @@
 package io.process.statebox.process
 
 import io.process.statebox.process.ScalaGraph._
-import io.process.statebox.process.simple.{ SimpleTokenGame, SimpleExecutor }
-import org.slf4j.LoggerFactory
+import io.process.statebox.process.simple.{ SimpleExecutor, SimpleTokenGame }
 
 import scalax.collection.Graph
 import scalax.collection.edge.WDiEdge
@@ -68,6 +67,22 @@ package object colored {
 
   implicit class M[A](m: MarkingSpec[A]) {
     def ~>[B](t: Transition { type Input = A }) = m.marking.map { case (p, weight) ⇒ arc(p, t, weight) }.toSeq
+  }
+
+  type Token[D] = (Long, D)
+
+  type ColouredMarking[P] = Map[P, Set[Token[_]]]
+
+  def coulouredMarkingLike[P]: MarkingLike[ColouredMarking[P], P] = new MarkingLike[ColouredMarking[P], P] {
+    override def emptyMarking: ColouredMarking[P] = Map.empty
+
+    override def tokenCount(marking: ColouredMarking[P]): Marking[P] = marking.map { case (p, tokens) ⇒ (p, tokens.size.toLong) }.toMap
+
+    override def consume(from: ColouredMarking[P], other: ColouredMarking[P]): ColouredMarking[P] = ???
+
+    override def produce(into: ColouredMarking[P], other: ColouredMarking[P]): ColouredMarking[P] = ???
+
+    override def isSubMarking(m: ColouredMarking[P], other: ColouredMarking[P]): Boolean = ???
   }
 
   def process(params: Seq[Arc]*): PTProcess[Place, Transition, Marking[Place]] =

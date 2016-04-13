@@ -1,6 +1,7 @@
 package io.process
 package designer.model
 
+import io.process.common._
 import io.process.common.draw._
 import io.process.common.draw.ui._
 import io.process.common.geometry._
@@ -18,7 +19,7 @@ object Foo {
 
 class Foo[T](t: AffineTransform,
     drawFn: BoundedDrawable[T],
-    eventHandler: T ⇒ UIEvent ?⇒ T) extends Transformable[Foo[T]] {
+    eventHandler: UIHandler[T]) extends Transformable[Foo[T]] {
 
   private def transformEvent(t: AffineTransform): UIEvent ?⇒ UIEvent = {
     case m @ MouseEvent(_, _, _, _) ⇒ m.transform(t)
@@ -26,6 +27,7 @@ class Foo[T](t: AffineTransform,
   }
 
   def draw: BoundedDrawable[T] = d ⇒ e ⇒ Transform(t, drawFn(d)(e))
+
   def apply: T ⇒ UIEvent ?⇒ T = e ⇒ eventHandler(e) <<< transformEvent(t)
 
   def constant[A, B](c: B): A ?⇒ B = { case e ⇒ c }
@@ -38,15 +40,6 @@ class Foo[T](t: AffineTransform,
       t ⇒ (self.apply(t._1) &&& constant(t._2)) orElse (constant[UIEvent, T](t._1) &&& other.apply(t._2))
     )
   }
-
-  //  def ~>[B](fn: T ⇒ Foo[B]) = {
-  //    val self = this
-  //    new Foo[T](t,
-  //      d ⇒ t ⇒ self.draw(t) ++ fn(t).draw
-  //    )
-  //  }
-
-  //  def %(fn: T ⇒ UIEvent ?⇒ Foo[T]): Foo[T]
 
   def emap(fn: T ⇒ UIEvent ?⇒ T): Foo[T] = new Foo[T](t, drawFn, fn)
 
