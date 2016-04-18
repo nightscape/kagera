@@ -1,7 +1,11 @@
 package io.kagera.akka.actor
 
 import akka.actor._
-import io.process.statebox.process._
+import io.kagera.akka.actor.PetriNetActor.{TransitionFired, NoFireableTransitions, GetState}
+import io.kagera.akka.actor.PetriNetDebugging.Step
+import io.kagera.api._
+import io.kagera.api.engine._
+
 
 object PetriNetActor {
 
