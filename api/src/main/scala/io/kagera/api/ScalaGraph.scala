@@ -69,11 +69,11 @@ object ScalaGraph {
     def markingShapeFn[M](marking: M)(implicit markingLike: MarkingLike[M, P]): ShapeFn = node ⇒ node match {
       case Left(nodeA) ⇒
         markingLike.multiplicity(marking).get(nodeA) match {
-          case Some(n) if n > 0 ⇒ List(DotAttr("shape", "doublecircle"))
-          case _                ⇒ List(DotAttr("shape", "circle"))
+          case Some(n) if n > 0 ⇒ List(DotAttr("shape", "doublecircle"), DotAttr("color", "darkorange"), DotAttr("penwidth", 2))
+          case _                ⇒ List(DotAttr("shape", "circle"), DotAttr("color", "darkorange"), DotAttr("penwidth", 2))
         }
 
-      case Right(nodeB) ⇒ List(DotAttr("shape", "square"))
+      case Right(nodeB) ⇒ List(DotAttr("shape", "square"), DotAttr("color", "blue4"), DotAttr("penwidth", 2))
     }
 
     def toDot(): String = toDotWithShapeFn(defaultShapFn)
