@@ -96,5 +96,5 @@ package object colored {
     override def isSubMarking(m: ColouredMarking[P], other: ColouredMarking[P]): Boolean = ???
   }
 
-  def process(params: Seq[Arc]*): PTProcess[Place, Transition, Marking[Place]] = new ScalaGraphWrapper(Graph(params.reduce(_ ++ _): _*)) with SimpleExecutor[Place, Transition]
+  def process(params: Seq[Arc]*): PTProcess[Place, Transition, Marking[Place]] = new ScalaGraphWrapper(Graph(params.reduce(_ ++ _): _*)) with SimpleTokenGame[Place, Transition] with SimpleExecutor[Place, Transition]
 }
