@@ -49,7 +49,6 @@ object Build extends Build {
         graph,
         scalazCore,
         scalazConcurrent,
-        scalaTime,
         scalatest % "test"))
 
   lazy val visualization = Project("visualization", file("visualization"))
