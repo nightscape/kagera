@@ -2,6 +2,8 @@ package io.kagera.api
 
 import io.kagera.api.ScalaGraph._
 
+import scalax.collection.edge.WLDiEdge
+
 /**
  * Petri net interface.
  *
@@ -15,7 +17,7 @@ trait PetriNet[P, T] {
    *
    * @return
    */
-  def innerGraph: BiPartiteGraph[P, T]
+  def innerGraph: BiPartiteGraph[P, T, WLDiEdge]
 
   /**
    * The set of places of the petri net

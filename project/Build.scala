@@ -47,6 +47,7 @@ object Build extends Build {
       name := "kagera-api",
       libraryDependencies ++= Seq(
         graph,
+        shapeless,
         scalazCore,
         scalazConcurrent,
         scalatest % "test"))
@@ -77,8 +78,12 @@ object Build extends Build {
       name      := "kagera-akka",
       mainClass := Some("io.kagera.akka.Main"),
       libraryDependencies ++= Seq(
-        akkaActor, akkaPersistence, akkaSlf4j,
-        akkaHttp, ficus, graph,
+        akkaActor,
+        akkaPersistence,
+        akkaSlf4j,
+        akkaHttp,
+        ficus,
+        graph,
         logback,
         akkaTestkit % "test",
         scalatest   % "test")

@@ -1,5 +1,6 @@
 package io.kagera.api
 
+import scalax.collection.edge.WLDiEdge
 import scalaz.syntax.std.boolean._
 
 package object simple {
@@ -51,7 +52,7 @@ package object simple {
 
     lazy val constructors = innerGraph.nodes.collect({
       case node if node.isNodeB && node.incoming.isEmpty ⇒ node.valueB
-    }: PartialFunction[BiPartiteGraph[P, T]#NodeT, T]) // TODO This should not be needed, why does the compiler complain?
+    }: PartialFunction[BiPartiteGraph[P, T, WLDiEdge]#NodeT, T]) // TODO This should not be needed, why does the compiler complain?
 
     override def enabledTransitions(marking: Marking[P]): Set[T] = {
       marking.map {
