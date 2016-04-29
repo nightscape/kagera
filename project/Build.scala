@@ -48,6 +48,7 @@ object Build extends Build {
       libraryDependencies ++= Seq(
         graph,
         shapeless,
+        scalaReflect,
         scalazCore,
         scalazConcurrent,
         scalatest % "test"))

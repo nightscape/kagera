@@ -3,7 +3,7 @@ package io.kagera.dot
 import io.kagera.api.MarkingLike
 
 import scalax.collection.Graph
-import scalax.collection.edge.{WLDiEdge, WDiEdge}
+import scalax.collection.edge.{ WLDiEdge, WDiEdge }
 import scalax.collection.io.dot._
 import scalax.collection.io.dot.implicits._
 

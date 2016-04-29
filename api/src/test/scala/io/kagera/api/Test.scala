@@ -1,7 +1,7 @@
 package io.kagera.api
 
 import io.kagera.api.colored._
-import shapeless.{HNil, HList}
+import shapeless.{ HNil, HList }
 import shapeless._
 
 object Test extends App {
