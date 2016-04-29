@@ -3,7 +3,7 @@ package io.kagera.dot
 import io.kagera.api.MarkingLike
 
 import scalax.collection.Graph
-import scalax.collection.edge.WDiEdge
+import scalax.collection.edge.{WLDiEdge, WDiEdge}
 import scalax.collection.io.dot._
 import scalax.collection.io.dot.implicits._
 
@@ -34,7 +34,7 @@ object ScalaGraphDot {
   }
 
   // TODO Generalize this for all types of graphs
-  implicit class PetriNetVisualization[P, T](graph: Graph[Either[P, T], WDiEdge]) {
+  implicit class PetriNetVisualization[P, T](graph: Graph[Either[P, T], WLDiEdge]) {
 
     def toDot(): String = toDot("Process", biPartiteNodeId, petriNetNodeShape)
 
@@ -48,11 +48,11 @@ object ScalaGraphDot {
         attrStmts = List(DotAttrStmt(Elem.node, List(DotAttr("shape", "record")))),
         attrList = List.empty)
 
-      def myNodeTransformer(innerNode: Graph[Either[P, T], WDiEdge]#NodeT): Option[(DotGraph, DotNodeStmt)] = {
+      def myNodeTransformer(innerNode: Graph[Either[P, T], WLDiEdge]#NodeT): Option[(DotGraph, DotNodeStmt)] = {
         Some((myRoot, DotNodeStmt(nodeIdFn(innerNode.value), nodeAttrFn(innerNode.value))))
       }
 
-      def myEdgeTransformer(innerEdge: Graph[Either[P, T], WDiEdge]#EdgeT): Option[(DotGraph, DotEdgeStmt)] = {
+      def myEdgeTransformer(innerEdge: Graph[Either[P, T], WLDiEdge]#EdgeT): Option[(DotGraph, DotEdgeStmt)] = {
         val source = innerEdge.edge.source.value
         val target = innerEdge.edge.target.value
 
