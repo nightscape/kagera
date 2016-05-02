@@ -1,7 +1,7 @@
 package io.kagera.api
 
 import io.kagera.api.ScalaGraph._
-import io.kagera.api.simple.{ SimpleExecutor, SimpleTokenGame }
+import io.kagera.api.simple.{ SimplePetriNetProcess, SimpleExecutor, SimpleTokenGame }
 import io.kagera.api.tags.Label
 import scala.concurrent.{ ExecutionContext, Future, Await }
 import scalax.collection.Graph
@@ -85,6 +85,6 @@ package object colored {
     }
   }
 
-  def process(params: Seq[Arc]*): PTProcess[Place, Transition, Marking[Place]] =
-    new ScalaGraphPetriNet(Graph(params.reduce(_ ++ _): _*)) with SimpleTokenGame[Place, Transition] with SimpleExecutor[Place, Transition]
+  def process(params: Seq[Arc]*): PetriNetProcess[Place, Transition, Marking[Place]] =
+    new ScalaGraphPetriNet(Graph(params.reduce(_ ++ _): _*)) with SimplePetriNetProcess
 }

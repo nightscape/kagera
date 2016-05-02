@@ -1,5 +1,7 @@
 package io.kagera.api
 
+import io.kagera.api.colored.{ Transition, Place }
+
 import scala.concurrent.Future
 import scalax.collection.edge.WLDiEdge
 import scalaz.syntax.std.boolean._
@@ -72,4 +74,6 @@ package object simple {
 
     override def fireTransition(m: Marking[P])(t: T): Future[Marking[P]] = Future.successful(m.consume(inMarking(t)).produce(outMarking(t)))
   }
+
+  trait SimplePetriNetProcess extends PetriNetProcess[Place, Transition, Marking[Place]] with SimpleTokenGame[Place, Transition] with SimpleExecutor[Place, Transition]
 }
