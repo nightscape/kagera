@@ -72,7 +72,8 @@ package object simple {
 
     this: PetriNet[P, T] with TokenGame[P, T, Marking[P]] ⇒
 
-    override def fireTransition(m: Marking[P])(t: T): Future[Marking[P]] = Future.successful(m.consume(inMarking(t)).produce(outMarking(t)))
+    override def fireTransition(m: Marking[P])(transition: T, data: Option[Any]): Future[Marking[P]] =
+      Future.successful(m.consume(inMarking(transition)).produce(outMarking(transition)))
   }
 
   trait SimplePetriNetProcess extends PetriNetProcess[Place, Transition, Marking[Place]] with SimpleTokenGame[Place, Transition] with SimpleExecutor[Place, Transition]
