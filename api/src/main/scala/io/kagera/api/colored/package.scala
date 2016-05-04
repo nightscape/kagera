@@ -3,9 +3,9 @@ package io.kagera.api
 import io.kagera.api.ScalaGraph._
 import io.kagera.api.tags.Label
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.{ ExecutionContext, Future }
 import scalax.collection.edge.WLDiEdge
-import scalaz.{@@, Tag}
+import scalaz.{ @@, Tag }
 
 package object colored {
 
@@ -90,9 +90,7 @@ package object colored {
 
     this: PetriNet[Place, Transition] with TokenGame[Place, Transition, ColoredMarking] ⇒
 
-    implicit val ec: ExecutionContext = ExecutionContext.global
-
-    override def fireTransition(marking: ColoredMarking)(t: Transition, data: Option[Any]): Future[ColoredMarking] = {
+    override def fireTransition(marking: ColoredMarking)(t: Transition, data: Option[Any])(implicit ec: ExecutionContext) = {
 
       // pick the tokens
       enabledParameters(marking).get(t).flatMap(_.headOption).map { consume ⇒

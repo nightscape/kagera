@@ -1,6 +1,6 @@
 package io.kagera
 
-import scala.concurrent.Future
+import scala.concurrent.{ ExecutionContext, Future }
 import scalaz.@@
 
 package object api {
@@ -51,7 +51,7 @@ package object api {
 
     this: PetriNet[P, T] ⇒
 
-    def fireTransition(marking: M)(transition: T, data: Option[Any] = None): Future[M]
+    def fireTransition(marking: M)(transition: T, data: Option[Any] = None)(implicit ec: ExecutionContext): Future[M]
   }
 }
 
