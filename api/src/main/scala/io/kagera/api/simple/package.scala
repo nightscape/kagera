@@ -31,9 +31,9 @@ package object simple {
     override def isSubMarking(marking: Marking[P], other: Marking[P]): Boolean =
       !other.exists {
         case (place, count) ⇒ marking.get(place) match {
-          case None                  ⇒ true
-          case Some(n) if n <= count ⇒ true
-          case _                     ⇒ false
+          case None                 ⇒ true
+          case Some(n) if n < count ⇒ true
+          case _                    ⇒ false
         }
       }
   }
