@@ -71,6 +71,18 @@ package object colored {
     override def enabledTransitions(marking: ColoredMarking): Set[Transition] = simple.findEnabledTransitions(this)(marking.multiplicity)
   }
 
+  def executeTransition(pn: PetriNet[Place, Transition])(consume: ColoredMarking, t: Transition, data: Option[Any])(implicit ec: ExecutionContext): Future[ColoredMarking] = {
+    val input = consume.map {
+      case (place, data) ⇒ (place, pn.innerGraph.connectingEdgeAB(place, t), data)
+    }.toSeq
+
+    val output = pn.innerGraph.outgoingA(t).map {
+      case place ⇒ (pn.innerGraph.connectingEdgeBA(t, place), place)
+    }.toSeq
+
+    t.apply(t.createInput(input, data)).map(t.createOutput(_, output))
+  }
+
   trait ColoredExecutor extends TransitionExecutor[Place, Transition, ColoredMarking] {
 
     this: PetriNet[Place, Transition] with TokenGame[Place, Transition, ColoredMarking] ⇒
@@ -80,25 +92,13 @@ package object colored {
     override def fireTransition(marking: ColoredMarking)(t: Transition, data: Option[Any]): Future[ColoredMarking] = {
 
       // pick the tokens
-      enabledParameters(marking)(t).headOption.map { consume ⇒
+      enabledParameters(marking).get(t).flatMap(_.headOption).map { consume ⇒
 
-        val input = consume.map {
-          case (place, data) ⇒ (place, innerGraph.connectingEdgeAB(place, t), data)
-        }.toSeq
-
-        val output = innerGraph.outgoingA(t).map {
-          case place ⇒ (innerGraph.connectingEdgeBA(t, place), place)
-        }.toSeq
-
-        val transitionInput = t.createInput(input, data)
-
-        t.apply(transitionInput).map {
-          transitionOutput ⇒
-            val produce = t.createOutput(transitionOutput, output)
-            marking.consume(consume).produce(produce)
-        }
+        executeTransition(this)(consume, t, data).map(produce ⇒
+          marking.consume(consume).produce(produce)
+        )
       }.getOrElse {
-        throw new IllegalStateException("Transition not enabled")
+        throw new IllegalStateException(s"Transition $t is not enabled")
       }
     }
   }
