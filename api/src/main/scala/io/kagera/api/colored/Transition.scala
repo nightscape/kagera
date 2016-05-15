@@ -1,6 +1,7 @@
 package io.kagera.api.colored
 
 import scala.concurrent.Future
+import scala.concurrent.duration.{ Duration, FiniteDuration }
 import scalax.collection.edge.WLDiEdge
 
 /**
@@ -37,6 +38,12 @@ trait Transition {
    * from outside.
    */
   val isManaged: Boolean
+
+  /**
+   * The maximum duration this transition may spend doing computation / io.
+   *
+   */
+  val maximumOperationTime: Duration
 
   /**
    * Creates a valid input type for the transition using the in-adjacent (place, arc, tokens) tuples and
