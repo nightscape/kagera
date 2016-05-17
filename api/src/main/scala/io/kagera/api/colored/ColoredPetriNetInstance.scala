@@ -4,7 +4,7 @@ import io.kagera.api.{ PetriNetProcess, PetriNetInstance }
 
 import scala.concurrent.Future
 
-class ColoredPetriNetInstance(process: PetriNetProcess[Place, Transition, ColoredMarking], initialMarking: ColoredMarking) extends PetriNetInstance[Place, Transition, ColoredMarking] {
+class ColoredPetriNetInstance(process: PetriNetProcess[Place, Transition, ColoredMarking], initialMarking: ColoredMarking)(implicit executor: scala.concurrent.ExecutionContext) extends PetriNetInstance[Place, Transition, ColoredMarking] {
 
   override def topology = process
 

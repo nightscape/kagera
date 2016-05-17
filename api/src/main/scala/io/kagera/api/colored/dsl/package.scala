@@ -4,7 +4,7 @@ import io.kagera.api.PetriNetProcess
 import io.kagera.api.ScalaGraph.ScalaGraphPetriNet
 
 import scala.concurrent.duration.Duration
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.{ ExecutionContext, Future }
 import scalax.collection.Graph
 import scalax.collection.edge.WLDiEdge
 
@@ -33,7 +33,7 @@ package object dsl {
     }.toMap
 
     override def createInput(inAdjacent: Seq[(Place, WLDiEdge[Node], Seq[Any])], data: Option[Any]): Input = null
-    override def apply(input: Input): Future[Output] = Future.successful(null)
+    override def apply(input: Input)(implicit executor: scala.concurrent.ExecutionContext): Future[Output] = Future.successful(null)
   }
 
   def process(params: Seq[Arc]*): PetriNetProcess[Place, Transition, ColoredMarking] =
