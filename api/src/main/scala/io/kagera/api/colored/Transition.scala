@@ -68,9 +68,9 @@ trait Transition {
   /**
    * Asynchronous function from Input to Output.
    *
-   * @param input
+   * @param input input
    *
-   * @return
+   * @return future of output
    */
   def apply(input: Input)(implicit executor: scala.concurrent.ExecutionContext): Future[Output]
 }

@@ -26,19 +26,21 @@ package object dsl {
 
   def nullPlace(id: Long, label: String) = Place[Null](id, label)
 
-  def nullTransition(id: Long, label: String, isManaged: Boolean = false) = new TransitionImpl[Null, Null](id, label, isManaged, Duration.Undefined) {
+  def nullTransition(id: Long, label: String, isManaged: Boolean = false) = new AbstractTransition[Null, Null](id, label, isManaged, Duration.Undefined) {
 
     override def createOutput(output: Output, outAdjacent: Seq[(WLDiEdge[Node], Place)]): ColoredMarking = outAdjacent.map {
       case (arc, place) ⇒ place -> List.fill(arc.weight.toInt)(null)
     }.toMap
 
     override def createInput(inAdjacent: Seq[(Place, WLDiEdge[Node], Seq[Any])], data: Option[Any]): Input = null
+
     override def apply(input: Input)(implicit executor: scala.concurrent.ExecutionContext): Future[Output] = Future.successful(null)
   }
 
   def process(params: Seq[Arc]*): PetriNetProcess[Place, Transition, ColoredMarking] =
     new ScalaGraphPetriNet(Graph(params.reduce(_ ++ _): _*)) with ColoredPetriNetProcess
 
-  def processInstance(process: PetriNetProcess[Place, Transition, ColoredMarking], initialMarking: ColoredMarking = Map.empty) =
+  def processInstance(process: PetriNetProcess[Place, Transition, ColoredMarking],
+    initialMarking: ColoredMarking = Map.empty): ColoredPetriNetInstance =
     new ColoredPetriNetInstance(process, initialMarking)
 }
