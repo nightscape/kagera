@@ -22,7 +22,8 @@ package object dsl {
 
   def arc(t: Transition, p: Place, weight: Long, fieldName: String): Arc = WLDiEdge[Node, String](Right(t), Left(p))(weight, "")
 
-  def arc(p: Place, t: Transition, weight: Long, fieldName: String): Arc = WLDiEdge[Node, String](Left(p), Right(t))(weight, "")
+  def arc(p: Place, t: Transition, weight: Long, fieldName: String): Arc =
+    WLDiEdge[Node, PTEdge](Left(p), Right(t))(weight, new PTEdgeImpl(weight, null))
 
   def nullPlace(id: Long, label: String) = Place[Null](id, label)
 
