@@ -1,8 +1,8 @@
 package io.kagera.api.colored
 
-class PTEdgeImpl(
+class PTEdgeImpl[T](
     override val weight: Long,
-    override val filter: Place ⇒ Place#Color ⇒ Boolean) extends PTEdge {
+    override val filter: T ⇒ Boolean) extends PTEdge[T] {
 
-  def withFilter(newFilter: Place ⇒ Place#Color ⇒ Boolean) = new PTEdgeImpl(weight, newFilter)
+  def withFilter(newFilter: T ⇒ Boolean) = new PTEdgeImpl[T](weight, newFilter)
 }

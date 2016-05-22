@@ -21,10 +21,10 @@ class ExecutorSpec extends WordSpec {
 
       implicit val ec: ExecutionContext = ExecutionContext.global
 
-      val p = process(Seq(
+      val p = process(
         p1 ~> mockedTransition,
         mockedTransition ~> p2
-      ))
+      )
 
       val m: ColoredMarking = Map(p1 -> Seq(null))
 
