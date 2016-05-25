@@ -60,7 +60,7 @@ trait Transition {
    * @param data  An optional data field that is given from outside the process.
    * @return A valid instance of type Input.
    */
-  def createInput(inAdjacent: Seq[(Place, WLDiEdge[Node], Seq[Any])], data: Option[Any]): Input
+  def createInput(inAdjacent: Seq[(Place, WLDiEdge[Node], Seq[Any])], data: Option[Any], context: TransitionContext): Input
 
   /**
    * Creates a ColoredMarking from the transition output.

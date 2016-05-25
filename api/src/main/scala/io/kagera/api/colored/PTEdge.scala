@@ -17,7 +17,7 @@ trait PTEdge[T] {
    * TODO
    *
    * A predicate can not communicate a reason for failure.
-    *
+   *
    * Perhaps better would be:
    *
    * T => Option(String)
