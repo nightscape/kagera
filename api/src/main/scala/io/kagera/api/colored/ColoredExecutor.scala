@@ -3,15 +3,11 @@ package io.kagera.api.colored
 import io.kagera.api._
 
 import scala.concurrent.{ Future, ExecutionContext }
+import ColoredExecutor._
 
-trait ColoredExecutor extends TransitionExecutor[Place, Transition, ColoredMarking] {
-
-  this: PetriNet[Place, Transition] with TokenGame[Place, Transition, ColoredMarking] ⇒
-
+object ColoredExecutor {
   def executeTransition(pn: PetriNet[Place, Transition])(consume: ColoredMarking, t: Transition, extraData: Option[Any], id: java.util.UUID)(implicit ec: ExecutionContext): Future[ColoredMarking] = {
-
     try {
-
       val inAdjacent = consume.map {
         case (place, data) ⇒ (place, pn.innerGraph.findPTEdge(place, t).get, data)
       }.toSeq
@@ -28,12 +24,16 @@ trait ColoredExecutor extends TransitionExecutor[Place, Transition, ColoredMarki
       case e: Exception ⇒ Future.failed(e)
     }
   }
+}
+
+trait ColoredExecutor extends TransitionExecutor[Place, Transition, ColoredMarking] {
+
+  this: PetriNet[Place, Transition] with TokenGame[Place, Transition, ColoredMarking] ⇒
 
   override def fireTransition(marking: ColoredMarking, id: java.util.UUID)(t: Transition, data: Option[Any])(implicit ec: ExecutionContext) = {
 
     // pick the tokens
     enabledParameters(marking).get(t).flatMap(_.headOption).map { consume ⇒
-
       executeTransition(this)(consume, t, data, id).recoverWith {
         case e: Exception ⇒ Future.failed(new RuntimeException(s"Transition '$t' failed to fire!", e))
       }.map(produce ⇒ marking.consume(consume).produce(produce))
