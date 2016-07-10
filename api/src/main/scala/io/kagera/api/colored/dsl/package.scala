@@ -36,7 +36,7 @@ package object dsl {
         case (arc, place) ⇒ place -> List.fill(arc.weight.toInt)(output)
       }.toMap
 
-      override def createInput(inAdjacent: Seq[(Place, WLDiEdge[Node], Seq[Any])], data: Option[Any], context: TransitionContext): Input = null
+      override def createInput(inAdjacent: Seq[(Place, PTEdge[Any], Seq[Any])], data: Option[Any], context: TransitionContext): Input = null
 
       override def apply(input: Input)(implicit executor: scala.concurrent.ExecutionContext): Future[Output] = Future.successful(constant)
     }

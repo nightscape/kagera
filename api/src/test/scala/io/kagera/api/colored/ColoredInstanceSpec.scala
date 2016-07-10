@@ -18,7 +18,7 @@ class ColoredInstanceSpec extends WordSpec {
       case (edge, place) ⇒ place -> Seq(output)
     }.toMap
 
-    override def createInput(inAdjacent: Seq[(Place, WLDiEdge[Node], Seq[Any])], data: Option[Any], context: TransitionContext): Input = data.orNull
+    override def createInput(inAdjacent: Seq[(Place, PTEdge[Any], Seq[Any])], data: Option[Any], context: TransitionContext): Input = data.orNull
   }
 
   val petriNet = process(
