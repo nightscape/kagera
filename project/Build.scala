@@ -81,12 +81,11 @@ object Build extends Build {
         akkaPersistence,
         akkaSlf4j,
         akkaHttp,
-        ficus,
         graph,
         logback,
         akkaTestkit % "test",
         scalatest   % "test")
     ))
 
-  lazy val root = Project("kagera", file(".")).aggregate(api, visualization).settings(defaultProjectSettings).settings(publish := { })
+  lazy val root = Project("kagera", file(".")).aggregate(api, akkaImplementation, visualization).settings(defaultProjectSettings).settings(publish := { })
 }

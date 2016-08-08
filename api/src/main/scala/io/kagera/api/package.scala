@@ -21,12 +21,12 @@ package object api {
   type Identifiable[T] = T ⇒ Long @@ tags.Id
   type Labeled[T] = T ⇒ String @@ tags.Label
 
-  implicit class LabeledFn[T: Labeled](seq: Iterable[T]) {
+  implicit class LabeledFn[T : Labeled](seq: Iterable[T]) {
     def findByLabel(label: String) = seq.find(e ⇒ implicitly[Labeled[T]].apply(e) == label)
   }
 
-  implicit class IdFn[T: Identifiable](seq: Iterable[T]) {
-    def findById(id: String) = seq.find(e ⇒ implicitly[Identifiable[T]].apply(e) == id)
+  implicit class IdFn[T : Identifiable](seq: Iterable[T]) {
+    def findById(id: Long) = seq.find(e ⇒ implicitly[Identifiable[T]].apply(e) == id)
   }
 
   type BiPartiteGraph[P, T, E[X] <: EdgeLikeIn[X]] = Graph[Either[P, T], E]
