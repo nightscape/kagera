@@ -1,5 +1,7 @@
 package io.kagera.api
 
+import io.kagera.api.multiset.MultiSet
+
 import scalax.collection.edge.WLDiEdge
 
 /**
@@ -69,7 +71,7 @@ trait PetriNet[P, T] {
    * @param t transition
    * @return
    */
-  def inMarking(t: T): Marking[P]
+  def inMarking(t: T): MultiSet[P]
 
   /**
    * The out marking of a transition. That is; a map of place -> arc weight
@@ -77,7 +79,7 @@ trait PetriNet[P, T] {
    * @param t transition
    * @return
    */
-  def outMarking(t: T): Marking[P]
+  def outMarking(t: T): MultiSet[P]
 
   /**
    * The set of nodes (places + transitions) in the petri net.
@@ -85,4 +87,12 @@ trait PetriNet[P, T] {
    * @return The set of nodes.
    */
   def nodes: scala.collection.Set[Either[P, T]]
+
+  def is1Safe(m0: Map[P, Long]): Boolean = ???
+
+  def reachable(m0: Map[P, Long], target: Map[P, Long]): Boolean = ???
+
+  def boundedness(m0: Map[P, Long], p: P) = ???
+
+  def liveliness(m: Map[P, Long], t: T) = ???
 }
