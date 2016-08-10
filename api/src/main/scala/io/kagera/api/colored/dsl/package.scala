@@ -29,15 +29,17 @@ package object dsl {
 
   def constantTransition[I, O, S](id: Long, label: String, isManaged: Boolean = false, constant: O) =
     new IdentityTransition[I, O, S](id, label, isManaged, Duration.Undefined) {
-      override def apply(inAdjacent: MultiSet[Place[_]], outAdjacent: MultiSet[Place[_]])(implicit executor: ExecutionContext): (ColoredMarking, S, I) ⇒ Future[(ColoredMarking, O)] =
+      override def apply(inAdjacent: MultiSet[Place[_]], outAdjacent: MultiSet[Place[_]])(implicit executor: ExecutionContext): (ColoredMarking, S, I) ⇒ Future[(ColoredMarking, O)] = {
 
-        (marking, state, input) ⇒ {
-          val tokens = outAdjacent.map {
-            case (place, weight) ⇒ produceTokens(place, weight.toInt)
+        (marking, state, input) ⇒
+          {
+            val producedTokens: Map[Place[_], MultiSet[_]] = outAdjacent.map {
+              case (place, weight) ⇒ place -> produceTokens(place, weight.toInt)
+            }.toMap
+
+            Future.successful(ColoredMarking(producedTokens) -> constant)
           }
-
-          Future.successful(marking -> constant)
-        }
+      }
 
       override def produceTokens[C](place: Place[C], count: Int): MultiSet[C] = MultiSet.empty[C] + (constant.asInstanceOf[C] -> count)
     }

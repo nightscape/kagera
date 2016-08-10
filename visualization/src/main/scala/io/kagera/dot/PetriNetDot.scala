@@ -8,7 +8,7 @@ import scalax.collection.edge.WLDiEdge
 import scalax.collection.io.dot._
 import scalax.collection.io.dot.implicits._
 
-object PetriNet {
+object PetriNetDot {
 
   def labelFn[P, T]: Either[P, T] ⇒ String = node ⇒ node match {
     case Left(a)  ⇒ a.toString
@@ -35,6 +35,7 @@ object PetriNet {
             case Some(n) if n > 0 ⇒ List(DotAttr("shape", "doublecircle"), DotAttr("color", "darkorange"), DotAttr("style", "filled"), DotAttr("fillcolor", "darkorange"), DotAttr("penwidth", 2))
             case _                ⇒ List(DotAttr("shape", "circle"), DotAttr("color", "darkorange"), DotAttr("penwidth", 2))
           }
+        case Right(nodeB) ⇒ List(DotAttr("shape", "square"))
       }
     }
 
@@ -43,6 +44,6 @@ object PetriNet {
 
     def toDot(): String = toDot(petriNetTheme[P, T])
 
-    def toDot(theme: GraphTheme[Either[P, T], WLDiEdge]): String = Graph.generateDot(graph, theme)
+    def toDot(theme: GraphTheme[Either[P, T], WLDiEdge]): String = GraphDot.generateDot(graph, theme)
   }
 }

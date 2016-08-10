@@ -8,25 +8,30 @@ trait TransitionExecutor[S] {
 
   this: PetriNet[Place[_], Transition[_, _, _]] with TokenGame[Place[_], Transition[_, _, _], ColoredMarking] ⇒
 
+  // TODO remove this requirement
   implicit val executionContext: ExecutionContext
 
   val transitionFunctions: Map[Transition[_, _, _], _] =
     transitions.map(t ⇒ t -> t.apply(inMarking(t), outMarking(t))).toMap
 
-  def tfn[Input, Output](t: Transition[Input, Output, S]): (ColoredMarking, S, Input) ⇒ Future[(ColoredMarking, S, Output)] =
-    transitionFunctions(t).asInstanceOf[(ColoredMarking, S, Input) ⇒ Future[(ColoredMarking, S, Output)]]
+  def tfn[Input, Output](t: Transition[Input, Output, S]): (ColoredMarking, S, Input) ⇒ Future[(ColoredMarking, Output)] =
+    transitionFunctions(t).asInstanceOf[(ColoredMarking, S, Input) ⇒ Future[(ColoredMarking, Output)]]
 
-  def fireTransition[Input, Output](t: Transition[Input, Output, S])(marking: ColoredMarking, context: S, input: Input): Future[(ColoredMarking, S)] = {
+  def applyTransition[Input, Output](t: Transition[Input, Output, S])(marking: ColoredMarking, state: S, input: Input): Future[(ColoredMarking, S)] = {
+    ???
+  }
 
-    // pick the tokens
-    val result = enabledParameters(marking).get(t).flatMap(_.headOption).map { consume ⇒
+  def fireTransition[Input, Output](t: Transition[Input, Output, S])(consume: ColoredMarking, state: S, input: Input): Future[(ColoredMarking, Output)] = {
 
-      tfn(t)(consume, context, input).recoverWith {
-        case e: Exception ⇒ Future.failed(new RuntimeException(s"Transition '$t' failed to fire!", e))
-      }.map { case (produce, context, tOut) ⇒ (marking -- consume ++ produce, context) }
+    if (consume.multiplicities == inMarking(t)) {
+      // TODO make more explicit what is wrong here, mention the first multiplicity that is incorrect.
+      Future.failed(new IllegalArgumentException(s"Transition $t may not consume $consume"))
+    }
 
-    }.getOrElse { throw new IllegalStateException(s"Transition $t is not enabled") }
+    tfn(t)(consume, state, input).recoverWith {
+      case e: Exception ⇒ Future.failed(new RuntimeException(s"Transition '$t' failed to fire!", e))
+    }.map { case (produce, output) ⇒ (produce, output) }
 
-    result
+    //    }.getOrElse { throw new IllegalStateException(s"Transition $t is not enabled") }
   }
 }
