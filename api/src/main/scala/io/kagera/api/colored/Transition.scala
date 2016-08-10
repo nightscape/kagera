@@ -5,6 +5,13 @@ import io.kagera.api.multiset.MultiSet
 import scala.concurrent.Future
 import scala.concurrent.duration.{ Duration, FiniteDuration }
 
+/**
+ * A transition in a Colored Petri Net
+ *
+ * @tparam Input  The input type of the transition, the type of value that is required as input
+ * @tparam Output The output type of the transition, the type of value that this transition 'emits' or 'produces'
+ * @tparam State  The type of state the transition closes over.
+ */
 trait Transition[Input, Output, State] {
 
   /**
@@ -40,9 +47,16 @@ trait Transition[Input, Output, State] {
   val maximumOperationTime: Duration
 
   /**
+   * A duration, specifying the delay that the transition, after becoming enabled, may fire.
+   *
+   * @return
+   */
+  def delay: FiniteDuration = Duration.Zero
+
+  /**
    * Given the in and out adjacent places with their weight returns a function:
    *
-   * (Mi, S, I) => (Mo, S', O)
+   * (Mi, S, I) => (Mo, O)
    *
    * Where:
    *
@@ -51,7 +65,6 @@ trait Transition[Input, Output, State] {
    * I is input data
    *
    * Mo is the out-adjacent marking, the tokens this transition produces.
-   * S' is the changed context state.
    * O is the emitted output
    *
    * @param inAdjacent
@@ -61,5 +74,13 @@ trait Transition[Input, Output, State] {
    */
   def apply(inAdjacent: MultiSet[Place[_]], outAdjacent: MultiSet[Place[_]])(implicit executor: scala.concurrent.ExecutionContext): (ColoredMarking, State, Input) ⇒ Future[(ColoredMarking, Output)]
 
+  /**
+   * The state transition function:
+   *
+   * Given a value of type Output returns a function
+   *
+   * @param e
+   * @return
+   */
   def updateState(e: Output): State ⇒ State
 }
