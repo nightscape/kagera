@@ -1,7 +1,7 @@
 package io.kagera.api
 
 import io.kagera.api.multiset.MultiSet
-import shapeless.{ HMap, tag }
+import shapeless.tag
 import shapeless.tag._
 
 import scala.language.existentials
@@ -14,12 +14,14 @@ package object colored {
    */
   type Node = Either[Place[_], Transition[_, _, _]]
 
+  /**
+    * Type alias for the edge type of the scalax.collection.Graph backing the petri net.
+    */
+  type Arc = WLDiEdge[Node]
+
   type MarkedPlace[T] = (Place[T], MultiSet[T])
 
-  /**
-   * Type alias for the edge type of the scalax.collection.Graph backing the petri net.
-   */
-  type Arc = WLDiEdge[Node]
+  implicit def toMarking(map: Map[Place[_], MultiSet[_]]): ColoredMarking = ColoredMarking(map)
 
   implicit def placeLabel[C](p: Place[C]): String @@ tags.Label = tag[tags.Label](p.label)
 
@@ -30,6 +32,4 @@ package object colored {
   implicit def transitionIdentifier(t: Transition[_, _, _]): Long @@ tags.Id = tag[tags.Id](t.id)
 
   type ColoredPetriNetProcess[S] = PetriNet[Place[_], Transition[_, _, _]] with ColoredTokenGame with TransitionExecutor[S]
-
-  def foo[Transition: Identifiable: Labeled] = ???
 }

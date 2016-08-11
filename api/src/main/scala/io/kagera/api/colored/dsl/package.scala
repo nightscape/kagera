@@ -33,11 +33,11 @@ package object dsl {
 
         (marking, state, input) ⇒
           {
-            val producedTokens: Map[Place[_], MultiSet[_]] = outAdjacent.map {
+            val produced: ColoredMarking = outAdjacent.map {
               case (place, weight) ⇒ place -> produceTokens(place, weight.toInt)
             }.toMap
 
-            Future.successful(ColoredMarking(producedTokens) -> constant)
+            Future.successful(produced -> constant)
           }
       }
 

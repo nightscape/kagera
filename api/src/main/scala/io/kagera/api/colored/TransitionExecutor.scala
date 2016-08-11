@@ -17,10 +17,6 @@ trait TransitionExecutor[S] {
   def tfn[Input, Output](t: Transition[Input, Output, S]): (ColoredMarking, S, Input) ⇒ Future[(ColoredMarking, Output)] =
     transitionFunctions(t).asInstanceOf[(ColoredMarking, S, Input) ⇒ Future[(ColoredMarking, Output)]]
 
-  def applyTransition[Input, Output](t: Transition[Input, Output, S])(marking: ColoredMarking, state: S, input: Input): Future[(ColoredMarking, S)] = {
-    ???
-  }
-
   def fireTransition[Input, Output](t: Transition[Input, Output, S])(consume: ColoredMarking, state: S, input: Input): Future[(ColoredMarking, Output)] = {
 
     if (consume.multiplicities == inMarking(t)) {
@@ -31,7 +27,5 @@ trait TransitionExecutor[S] {
     tfn(t)(consume, state, input).recoverWith {
       case e: Exception ⇒ Future.failed(new RuntimeException(s"Transition '$t' failed to fire!", e))
     }.map { case (produce, output) ⇒ (produce, output) }
-
-    //    }.getOrElse { throw new IllegalStateException(s"Transition $t is not enabled") }
   }
 }
