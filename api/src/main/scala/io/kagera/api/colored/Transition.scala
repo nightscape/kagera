@@ -1,23 +1,18 @@
 package io.kagera.api.colored
 
+import io.kagera.api.multiset.MultiSet
+
 import scala.concurrent.Future
 import scala.concurrent.duration.{ Duration, FiniteDuration }
-import scalax.collection.edge.WLDiEdge
 
 /**
- * A transition in a colored petri net.
+ * A transition in a Colored Petri Net
+ *
+ * @tparam Input  The input type of the transition, the type of value that is required as input
+ * @tparam Output The output type of the transition, the type of value that this transition 'emits' or 'produces'
+ * @tparam State  The type of state the transition closes over.
  */
-trait Transition {
-
-  /**
-   * The input type of this transition.
-   */
-  type Input
-
-  /**
-   * The output type of this transition.
-   */
-  type Output
+trait Transition[Input, Output, State] {
 
   /**
    * The unique identifier of this transition.
@@ -36,50 +31,56 @@ trait Transition {
   /**
    * Flag indicating whether this transition is managed or manually triggered
    * from outside.
+   *
+   * This should be true iff Input == Unit.
+   *
+   * TODO how to encode this? the problem is in some contexts the Input type is unknown but this property might still
+   * be needed
+   *
+   * Require a TypeClass?
    */
   val isManaged: Boolean
 
   /**
    * The maximum duration this transition may spend doing computation / io.
-   *
    */
   val maximumOperationTime: Duration
 
-  //  val failureStrategy: TransitionFailureHandler
+  /**
+   * A duration, specifying the delay that the transition, after becoming enabled, may fire.
+   *
+   * @return
+   */
+  def delay: FiniteDuration = Duration.Zero
 
   /**
-   * Creates a valid input type for the transition using the in-adjacent (place, arc, tokens) tuples and
-   * optional trigger data.
+   * Given the in and out adjacent places with their weight returns a function:
    *
-   * TODO !! This should return a curried function of type:
+   * (Mi, S, I) => (Mo, O)
    *
-   * Seq[(Place, WLDiEdge[Node])] => (Seq[Seq[Any]], Option[Any]) => Input
+   * Where:
    *
-   * This would add a validation phase (calling the first step of the curried function) that can
-   * be called during creating the petri net topology.
+   * Mi is the in-adjacent marking, the tokens this transition consumes.
+   * S is the context state.
+   * I is input data
    *
-   * @param inAdjacent The in-adjacent (place, arc, tokens) tuples.
-   * @param data  An optional data field that is given from outside the process.
-   * @return A valid instance of type Input.
+   * Mo is the out-adjacent marking, the tokens this transition produces.
+   * O is the emitted output
+   *
+   * @param inAdjacent
+   * @param outAdjacent
+   * @param executor
+   * @return
    */
-  def createInput(inAdjacent: Seq[(Place, PTEdge[Any], Seq[Any])], data: Option[Any], context: TransitionContext): Input
+  def apply(inAdjacent: MultiSet[Place[_]], outAdjacent: MultiSet[Place[_]])(implicit executor: scala.concurrent.ExecutionContext): (ColoredMarking, State, Input) ⇒ Future[(ColoredMarking, Output)]
 
   /**
-   * Creates a ColoredMarking from the transition output.
+   * The state transition function:
    *
-   * @param output  An instance of Output
-   * @param outAdjacent The out-adjacent (arc, place) tuples.
+   * Given a value of type Output returns a function
    *
-   * @return A valid ColoredMarking
+   * @param e
+   * @return
    */
-  def createOutput(output: Output, outAdjacent: Seq[(WLDiEdge[Node], Place)]): ColoredMarking
-
-  /**
-   * Asynchronous function from Input to Output.
-   *
-   * @param input input
-   *
-   * @return future of output
-   */
-  def apply(input: Input)(implicit executor: scala.concurrent.ExecutionContext): Future[Output]
+  def updateState(e: Output): State ⇒ State
 }
