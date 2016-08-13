@@ -15,11 +15,13 @@ package object colored {
   type Node = Either[Place[_], Transition[_, _, _]]
 
   /**
-    * Type alias for the edge type of the scalax.collection.Graph backing the petri net.
-    */
+   * Type alias for the edge type of the scalax.collection.Graph backing the petri net.
+   */
   type Arc = WLDiEdge[Node]
 
   type MarkedPlace[T] = (Place[T], MultiSet[T])
+
+  implicit def toMarkedPlace(tuple: (Place[Unit], Int)): MarkedPlace[Unit] = tuple._1 -> Map[Unit, Int](() -> tuple._2)
 
   implicit def toMarking(map: Map[Place[_], MultiSet[_]]): ColoredMarking = ColoredMarking(map)
 

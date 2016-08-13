@@ -27,7 +27,7 @@ object TokenGame {
  *
  * @tparam P Place
  * @tparam T Transition
- * @tparam M Marking
+ * @tparam M Marking     The type of Marking in the PetriNet
  */
 trait TokenGame[P, T, M] {
 
