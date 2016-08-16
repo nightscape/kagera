@@ -2,14 +2,13 @@ package io.kagera.akka.actor
 
 import java.util.UUID
 
-import akka.actor.Props
+import akka.actor.{ ActorLogging, Props }
 import akka.persistence.PersistentActor
 import io.kagera.akka.actor.PersistentPetriNetActor._
 import io.kagera.api._
 import io.kagera.api.colored._
 import io.kagera.api.multiset._
 import akka.pattern.pipe
-import io.kagera.api.colored.ColoredMarking.MarkingData
 import shapeless.tag._
 
 import scala.language.existentials
@@ -21,6 +20,11 @@ object PersistentPetriNetActor {
   // we don't want to store the consumed token values in this event, just pointers / identifiers
   // how to deterministically assign each token an identifier?
   case object GetState
+
+  /**
+   * TODO The accumulated state should be kept in a PersistentView
+   */
+  case object GetAccumulatedState
 
   // persist model
   case class TransitionFiredPersist(transition_id: Long, consumed: MarkingIndex, produced: Map[Long, MultiSet[_]], out: Any)
@@ -41,7 +45,7 @@ object PersistentPetriNetActor {
 
   implicit class MarkingIndexFns(indexedMarking: MarkingIndex) {
     def realizeFrom(marking: ColoredMarking): ColoredMarking = {
-      val data: MarkingData = indexedMarking.map {
+      indexedMarking.map {
         case (pid, values) ⇒
           val place = marking.markedPlaces.getById(pid)
           val tokens = values.map {
@@ -51,9 +55,7 @@ object PersistentPetriNetActor {
           }
 
           place -> tokens
-      }.toMap
-
-      ColoredMarking(data)
+      }.toMarking
     }
   }
 
@@ -93,11 +95,14 @@ object PersistentPetriNetActor {
     Props(new PersistentPetriNetActor[S](id: UUID, process, initialMarking, initialState))
 }
 
-class PersistentPetriNetActor[S](id: UUID, process: ColoredPetriNetProcess[S], initialMarking: ColoredMarking, initialState: S) extends PersistentActor {
+class PersistentPetriNetActor[S](id: UUID, process: ColoredPetriNetProcess[S], initialMarking: ColoredMarking, initialState: S) extends PersistentActor with ActorLogging {
 
   override def persistenceId: String = s"petrinet-$id"
 
   var currentMarking: ColoredMarking = initialMarking
+  var availableMarking: ColoredMarking = initialMarking
+  var accumulatedMarking: ColoredMarking = initialMarking
+
   var state: S = initialState
 
   val eventAdapter = new TransitionEventAdapter[S] {}
@@ -107,6 +112,9 @@ class PersistentPetriNetActor[S](id: UUID, process: ColoredPetriNetProcess[S], i
   override def receiveCommand = {
     case GetState ⇒
       sender() ! currentMarking
+
+    case GetAccumulatedState ⇒
+      sender() ! accumulatedMarking
 
     case e: TransitionFired[_] ⇒
       persist(eventAdapter.write(e)) { persisted ⇒
@@ -122,7 +130,7 @@ class PersistentPetriNetActor[S](id: UUID, process: ColoredPetriNetProcess[S], i
    * Fires the first enabled transition
    */
   def step() = {
-    process.enabledParameters(currentMarking).view.filter {
+    process.enabledParameters(availableMarking).view.filter {
       case (t, markings) ⇒ t.isManaged
     }.headOption.foreach {
       case (t, markings) ⇒ fire(t.asInstanceOf[Transition[Any, _, S]], ())
@@ -138,13 +146,16 @@ class PersistentPetriNetActor[S](id: UUID, process: ColoredPetriNetProcess[S], i
    */
   def fire(transition: Transition[Any, _, S], input: Any): Unit = {
 
-    process.enabledParameters(currentMarking).get(transition) match {
+    process.enabledParameters(availableMarking).get(transition) match {
       case None         ⇒ throw new IllegalArgumentException(s"Transition $transition is not enabled")
       case Some(params) ⇒ fire(transition, params.head, input)
     }
   }
 
   def fire(transition: Transition[Any, _, S], consume: ColoredMarking, input: Any): Unit = {
+
+    availableMarking = availableMarking -- consume
+
     val futureResult = process.fireTransition(transition)(consume, state, input).map {
       case (produced, output) ⇒ TransitionFired(transition, consume, produced, output)
     }
@@ -155,6 +166,8 @@ class PersistentPetriNetActor[S](id: UUID, process: ColoredPetriNetProcess[S], i
   def applyEvent: Receive = {
     case e: TransitionFired[_] ⇒
       currentMarking = currentMarking -- e.consumed ++ e.produced
+      availableMarking ++= e.produced
+      accumulatedMarking ++= e.produced
       state = e.transition.asInstanceOf[Transition[_, Any, S]].updateState(state)(e.out)
   }
 
