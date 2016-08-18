@@ -21,6 +21,10 @@ object ColoredMarking {
   def apply[A, B, C](m1: MarkedPlace[A], m2: MarkedPlace[B], m3: MarkedPlace[C]): ColoredMarking = {
     ColoredMarking(Map(m1, m2, m3): Map[Place[_], MultiSet[_]])
   }
+
+  def apply[A, B, C, D](m1: MarkedPlace[A], m2: MarkedPlace[B], m3: MarkedPlace[C], m4: MarkedPlace[D]): ColoredMarking = {
+    ColoredMarking(Map(m1, m2, m3, m4): Map[Place[_], MultiSet[_]])
+  }
 }
 
 case class ColoredMarking(data: MarkingData) {
@@ -68,5 +72,5 @@ case class ColoredMarking(data: MarkingData) {
       result + (place -> newTokens)
   }
 
-  override def toString = data.mapValues(_.allElements.mkString("(", ",", ")")).toString
+  override def toString = data.mapValues(_.allElements.mkString("(", ",", ")")).mkString("Marking(", ",", ")")
 }
