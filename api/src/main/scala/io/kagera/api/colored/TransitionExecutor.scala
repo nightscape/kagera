@@ -25,7 +25,7 @@ trait TransitionExecutor[S] {
     }
 
     def handleFailure: PartialFunction[Throwable, Future[(ColoredMarking, Output)]] = {
-      case e: Exception ⇒ Future.failed(new TransitionFailedException(t, e))
+      case e: Throwable ⇒ Future.failed(new TransitionFailedException(t, e))
     }
 
     try {

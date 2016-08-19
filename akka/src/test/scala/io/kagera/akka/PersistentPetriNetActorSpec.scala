@@ -6,7 +6,7 @@ import akka.actor.{ ActorSystem, PoisonPill, Props, Terminated }
 import akka.testkit.{ ImplicitSender, TestKit }
 import com.typesafe.config.ConfigFactory
 import io.kagera.akka.actor.PersistentPetriNetActor
-import io.kagera.akka.actor.PersistentPetriNetActor.{ FireTransition, GetState, State, TransitionFailed, TransitionFiredResponse }
+import io.kagera.akka.actor.PersistentPetriNetActor.{ FireTransition, GetState, State, TransitionFailed, TransitionFiredSuccessfully }
 import io.kagera.api.colored._
 import io.kagera.api.colored.dsl._
 import org.scalatest.WordSpecLike
@@ -47,6 +47,10 @@ class PersistentPetriNetActorSpec extends TestKit(ActorSystem("test", Persistent
   import system.dispatcher
 
   "A persistent petri net actor" should {
+
+    "Respond with a TransitionFiredSuccessfully message if a transition fired successfully" in {
+
+    }
 
     "Respond with a TransitionFailed message if a transition failed to fire" in {
 
@@ -95,10 +99,10 @@ class PersistentPetriNetActorSpec extends TestKit(ActorSystem("test", Persistent
       actor ! FireTransition(t1, ())
 
       // expect the next marking: p2 -> 1
-      expectMsgPF() { case TransitionFiredResponse(t1, _, _, result, _) if result == ColoredMarking(p2 -> 1) ⇒ }
+      expectMsgPF() { case TransitionFiredSuccessfully(t1, _, _, result, _) if result == ColoredMarking(p2 -> 1) ⇒ }
 
       // since t2 fires automatically we also expect the next marking: p3 -> 1
-      expectMsgPF() { case TransitionFiredResponse(t2, _, _, result, _) if result == ColoredMarking(p3 -> 1) ⇒ }
+      expectMsgPF() { case TransitionFiredSuccessfully(t2, _, _, result, _) if result == ColoredMarking(p3 -> 1) ⇒ }
 
       // terminate the actor
       watch(actor)
