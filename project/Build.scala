@@ -1,13 +1,11 @@
 import sbt._
 import sbt.Keys._
-import sbtassembly.AssemblyKeys
 import spray.revolver.RevolverPlugin.Revolver
 
 object Build extends Build {
 
   import Dependencies._
   import Formatting._
-  import AssemblyKeys._
 
   val commonScalacOptions = Seq(
     "-encoding", "utf8",
@@ -24,24 +22,10 @@ object Build extends Build {
     organization  := "io.kagera",
     scalaVersion  := "2.11.8",
     scalacOptions := commonScalacOptions,
-    incOptions    := incOptions.value.withNameHashing(true),
-    licenses      := Seq("MIT" -> url("https://opensource.org/licenses/MIT")),
-    homepage      := Some(url("https://github.com/merlijn/kagera")),
-    pomExtra      := (
-      <scm>
-        <url>git@github.com:merlijn/kagera.gi</url>
-        <connection>scm:git:git@github.com:merlijn/kagera</connection>
-      </scm>
-      <developers>
-        <developer>
-          <id>merlijn</id>
-          <name>Merlijn van Ittersum</name>
-        </developer>
-      </developers>
-    )
+    incOptions    := incOptions.value.withNameHashing(true)
   )
 
-  lazy val defaultProjectSettings = basicSettings ++ formattingSettings ++ Revolver.settings
+  lazy val defaultProjectSettings = basicSettings ++ formattingSettings ++ Revolver.settings ++ Sonatype.settings
 
   //  lazy val common = (crossProject.crossType(CrossType.Pure) in file("common"))
   //    .settings(defaultProjectSettings: _*)
@@ -82,7 +66,6 @@ object Build extends Build {
         graph,
         graphDot))
 
-
   lazy val akkaImplementation = Project("akka", file("akka"))
     .dependsOn(api)
     .settings(defaultProjectSettings ++ Seq(
@@ -94,7 +77,6 @@ object Build extends Build {
         akkaSlf4j,
         akkaHttp,
         graph,
-        logback,
         akkaTestkit % "test",
         scalatest   % "test")
     ))
