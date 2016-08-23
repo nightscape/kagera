@@ -6,9 +6,6 @@ import scalax.collection.edge.WLDiEdge
 
 /**
  * Petri net interface.
- *
- * TODO enrich this interface with more convenient functions
- *
  */
 trait PetriNet[P, T] {
 

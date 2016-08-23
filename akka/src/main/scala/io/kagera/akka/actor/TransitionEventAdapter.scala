@@ -10,6 +10,7 @@ import scala.collection.Map
 
 object TransitionEventAdapter {
 
+  // map from place id -> token id's
   type MarkingIndex = Map[Long, MultiSet[Int]]
 
   // persist model
@@ -19,7 +20,7 @@ object TransitionEventAdapter {
     time_completed: Long,
     consumed: MarkingIndex,
     produced: Map[Long, MultiSet[_]],
-    out: Any)
+    out: Any) // this should be Array[Byte] with pluggable
 
   implicit class ColoredMarkingFns(marking: ColoredMarking) {
     def indexed: Map[Long, MultiSet[Int]] = marking.data.map {
@@ -57,23 +58,31 @@ object TransitionEventAdapter {
   }
 }
 
-/**
- * Translates to/from the persist and internal event model
- *
- * @tparam S
- */
-trait TransitionEventAdapter[S] {
-  def writeEvent(e: TransitionFired): TransitionFiredPersist = {
+trait DefaultEventAdapter[S] extends TransitionEventAdapter[S, TransitionFiredPersist] {
+
+  override def writeEvent(e: TransitionFired): TransitionFiredPersist = {
     val consumedIndex: Map[Long, MultiSet[Int]] = e.consumed.indexed
     val produceIndex: Map[Long, MultiSet[_]] = e.produced.data.map { case (place, tokens) ⇒ place.id -> tokens }.toMap
 
     TransitionFiredPersist(e.transition_id, e.time_started, e.time_completed, consumedIndex, produceIndex, e.out)
   }
 
-  def readEvent(process: ColoredPetriNetProcess[S], currentMarking: ColoredMarking, e: TransitionFiredPersist): TransitionFired = {
+  override def readEvent(process: ColoredPetriNetProcess[S], currentMarking: ColoredMarking, e: TransitionFiredPersist): TransitionFired = {
     val transition = process.getTransitionById(e.transition_id)
     val consumed = e.consumed.realizeFrom(currentMarking)
     val produced = ColoredMarking(data = e.produced.map { case (id, tokens) ⇒ process.places.getById(id) -> tokens }.toMap)
     TransitionFired(transition, e.time_started, e.time_started, consumed, produced, e.out)
   }
+}
+
+/**
+ * Translates to/from the persist and internal event model
+ *
+ * @tparam S
+ */
+trait TransitionEventAdapter[S, E] {
+
+  def writeEvent(e: TransitionFired): TransitionFiredPersist
+
+  def readEvent(process: ColoredPetriNetProcess[S], currentMarking: ColoredMarking, e: TransitionFiredPersist): TransitionFired
 }
