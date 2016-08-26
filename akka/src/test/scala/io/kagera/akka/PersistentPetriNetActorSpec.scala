@@ -5,6 +5,7 @@ import java.util.UUID
 import akka.actor.{ ActorSystem, PoisonPill, Props, Terminated }
 import akka.testkit.{ ImplicitSender, TestKit }
 import com.typesafe.config.ConfigFactory
+import io.kagera.akka.PersistentPetriNetActorSpec._
 import io.kagera.akka.actor.PersistentPetriNetActor
 import io.kagera.akka.actor.PersistentPetriNetActor.{ FireTransition, GetState, State, TransitionFailed, TransitionFiredSuccessfully }
 import io.kagera.api.colored._
@@ -12,6 +13,11 @@ import io.kagera.api.colored.dsl._
 import org.scalatest.WordSpecLike
 
 object PersistentPetriNetActorSpec {
+
+  sealed trait Event
+  case class Added(n: Int) extends Event
+  case class Removed(n: Int) extends Event
+
   val config = ConfigFactory.parseString(
     """
       |akka {
@@ -39,10 +45,6 @@ object PersistentPetriNetActorSpec {
 class PersistentPetriNetActorSpec extends TestKit(ActorSystem("test", PersistentPetriNetActorSpec.config))
     with WordSpecLike with ImplicitSender {
 
-  trait Event extends Serializable
-  case class Added(n: Int) extends Event
-  case class Removed(n: Int) extends Event
-
   val eventSourcing: Set[Int] ⇒ Event ⇒ Set[Int] = set ⇒ {
     case Added(c)   ⇒ set + c
     case Removed(c) ⇒ set - c
@@ -55,10 +57,6 @@ class PersistentPetriNetActorSpec extends TestKit(ActorSystem("test", Persistent
   import system.dispatcher
 
   "A persistent petri net actor" should {
-
-    "Respond with a TransitionFiredSuccessfully message if a transition fired successfully" in {
-
-    }
 
     "Respond with a TransitionFailed message if a transition failed to fire" in {
 
