@@ -90,10 +90,9 @@ class PersistentPetriNetActorSpec extends TestKit(ActorSystem("test", Persistent
       )
 
       // creates a petri net actor with initial marking: p1 -> 1
-      val id = UUID.randomUUID()
       val initialMarking = ColoredMarking(p1 -> 1)
 
-      val actor = system.actorOf(Props(new PersistentPetriNetActor[Set[Int]](id, petriNet, initialMarking, Set.empty)))
+      val actor = system.actorOf(Props(new PersistentPetriNetActor[Set[Int]](petriNet, initialMarking, Set.empty)))
 
       // assert that the actor is in the initial state
       actor ! GetState
@@ -115,7 +114,7 @@ class PersistentPetriNetActorSpec extends TestKit(ActorSystem("test", Persistent
       expectMsgClass(classOf[Terminated])
 
       // create a new actor with the same persistent identifier
-      val newActor = system.actorOf(Props(new PersistentPetriNetActor[Set[Int]](id, petriNet, initialMarking, Set.empty)))
+      val newActor = system.actorOf(Props(new PersistentPetriNetActor[Set[Int]](petriNet, initialMarking, Set.empty)))
 
       newActor ! GetState
 
