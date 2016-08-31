@@ -34,10 +34,9 @@ object Build extends Build {
 
   lazy val defaultProjectSettings = basicSettings ++ formattingSettings ++ Revolver.settings ++ Sonatype.settings ++ scalaPBSettings
 
-
-  //  lazy val common = (crossProject.crossType(CrossType.Pure) in file("common"))
+  //  lazy val draw = (crossProject.crossType(CrossType.Pure) in file("common"))
   //    .settings(defaultProjectSettings: _*)
-  //    .settings(name := "kagera-common")
+  //    .settings(name := "kagera-draw")
   //    .jvmSettings(libraryDependencies += scalazCore)
   //    .jsSettings(libraryDependencies += "com.github.japgolly.fork.scalaz" %%% "scalaz-core" % "7.1.3")
 
@@ -74,11 +73,10 @@ object Build extends Build {
         graph,
         graphDot))
 
-  lazy val akkaImplementation = Project("akka", file("akka"))
+  lazy val akka = Project("akka", file("akka"))
     .dependsOn(api)
     .settings(defaultProjectSettings ++ Seq(
       name      := "kagera-akka",
-      mainClass := Some("io.kagera.akka.Main"),
       libraryDependencies ++= Seq(
         akkaActor,
         akkaPersistence,
@@ -88,5 +86,22 @@ object Build extends Build {
         scalatest   % "test")
     ))
 
-  lazy val root = Project("kagera", file(".")).aggregate(api, akkaImplementation, visualization).settings(defaultProjectSettings).settings(publish := { })
+  lazy val analyse = Project("analyse", file("analyse"))
+      .dependsOn(akka)
+      .settings(defaultProjectSettings ++ Seq(
+        resolvers            += "krasserm at bintray" at "http://dl.bintray.com/krasserm/maven",
+        name                 := "kagera-analyse",
+        libraryDependencies ++= Seq(akkaAnalyticsCassandra)
+      ))
+
+  lazy val demo = Project("demo", file("demo"))
+      .dependsOn(api, visualization, akka, analyse)
+      .settings(defaultProjectSettings ++ Seq(
+        name      := "kagera-demo-app",
+        mainClass := Some("io.kagera.demo.Main")
+    ))
+
+
+  lazy val root = Project("kagera", file(".")).aggregate(api, akka, analyse, visualization)
+    .settings(defaultProjectSettings).settings(publish := { })
 }
