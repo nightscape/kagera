@@ -27,14 +27,12 @@ object PersistentPetriNetActorSpec {
       |  persistence.snapshot-store.plugin = "akka.persistence.snapshot-store.local"
       |  actor.provider = "akka.actor.LocalActorRefProvider"
       |
-      |   persistence {
-      |    serializers = {
-      |      akka-unit-serializer = "io.kagera.akka.serializer.UnitSerializer"
-      |    }
+      |  actor.serializers {
+      |    scalapb = "io.kagera.akka.actor.ScalaPBSerializer"
+      |  }
       |
-      |    bindings = {
-      |      scala.unit = unit-serializer
-      |    }
+      |  actor.serialization-bindings {
+      |    "com.trueaccord.scalapb.GeneratedMessage" = scalapb
       |  }
       |}
       |
@@ -70,7 +68,7 @@ class PersistentPetriNetActorSpec extends TestKit(ActorSystem("test", Persistent
       val id = UUID.randomUUID()
       val initialMarking = ColoredMarking(p1 -> 1)
 
-      val actor = system.actorOf(Props(new PersistentPetriNetActor[Set[Int]](id, petriNet, initialMarking, Set.empty)))
+      val actor = system.actorOf(Props(new PersistentPetriNetActor[Set[Int]](petriNet, initialMarking, Set.empty)))
 
       actor ! FireTransition(t1, ())
 
@@ -78,6 +76,8 @@ class PersistentPetriNetActorSpec extends TestKit(ActorSystem("test", Persistent
     }
 
     "Be able to restore it's state after termination" in {
+
+      val actorName = java.util.UUID.randomUUID().toString
 
       val t1 = stateFunction(eventSourcing)(set ⇒ Added(1))
       val t2 = stateFunction(eventSourcing, isManaged = true)(set ⇒ Added(2))
@@ -92,7 +92,7 @@ class PersistentPetriNetActorSpec extends TestKit(ActorSystem("test", Persistent
       // creates a petri net actor with initial marking: p1 -> 1
       val initialMarking = ColoredMarking(p1 -> 1)
 
-      val actor = system.actorOf(Props(new PersistentPetriNetActor[Set[Int]](petriNet, initialMarking, Set.empty)))
+      val actor = system.actorOf(Props(new PersistentPetriNetActor[Set[Int]](petriNet, initialMarking, Set.empty)), actorName)
 
       // assert that the actor is in the initial state
       actor ! GetState
@@ -114,7 +114,7 @@ class PersistentPetriNetActorSpec extends TestKit(ActorSystem("test", Persistent
       expectMsgClass(classOf[Terminated])
 
       // create a new actor with the same persistent identifier
-      val newActor = system.actorOf(Props(new PersistentPetriNetActor[Set[Int]](petriNet, initialMarking, Set.empty)))
+      val newActor = system.actorOf(Props(new PersistentPetriNetActor[Set[Int]](petriNet, initialMarking, Set.empty)), actorName)
 
       newActor ! GetState
 

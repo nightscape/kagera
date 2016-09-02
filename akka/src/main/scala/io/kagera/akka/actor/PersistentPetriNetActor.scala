@@ -47,11 +47,11 @@ object PersistentPetriNetActor {
 
   protected case class JobTimedout(id: Long)
 
-  def props[S](process: ColoredPetriNetProcess[S], initialMarking: ColoredMarking, initialState: S) =
+  def props[S](process: ExecutablePetriNet[S], initialMarking: ColoredMarking, initialState: S) =
     Props(new PersistentPetriNetActor[S](process, initialMarking, initialState))
 }
 
-class PersistentPetriNetActor[S](process: ColoredPetriNetProcess[S], initialMarking: ColoredMarking, initialState: S) extends PersistentActor with ActorLogging with DefaultEventAdapter[S] {
+class PersistentPetriNetActor[S](process: ExecutablePetriNet[S], initialMarking: ColoredMarking, initialState: S) extends PersistentActor with ActorLogging with PetriNetEventAdapter[S] {
 
   val id = context.self.path.name
 
