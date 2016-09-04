@@ -1,7 +1,7 @@
 package io.kagera.analyse
 
 import akka.analytics.cassandra.JournalKey
-import org.apache.spark.{SparkConf, SparkContext}
+import org.apache.spark.{ SparkConf, SparkContext }
 import org.apache.spark.rdd.RDD
 import akka.analytics.cassandra._
 import io.kagera.akka.persistence.TransitionFired
@@ -23,13 +23,13 @@ class Test extends App {
   val total_transition_time = rdd
     .map(_._2)
     .flatMap {
-      case e: TransitionFired => Some(e)
-      case _ => None
+      case e: TransitionFired ⇒ Some(e)
+      case _                  ⇒ None
     }
     .groupBy(_.transitionId.get)
-      .map {
-        case (id, i) => id -> i.map(e => e.timeCompleted.get - e.timeStarted.get).reduce(_ + _)
-      }.collect.foreach {
-    case (tid, time) => println(s"total time for $tid: $time")
-  }
+    .map {
+      case (id, i) ⇒ id -> i.map(e ⇒ e.timeCompleted.get - e.timeStarted.get).reduce(_ + _)
+    }.collect.foreach {
+      case (tid, time) ⇒ println(s"total time for $tid: $time")
+    }
 }

@@ -18,7 +18,9 @@ object PersistentPetriNetActor {
 
   // we don't want to store the consumed token values in this event, just pointers / identifiers
   // how to deterministically assign each token an identifier?
-  case object GetState
+  trait Command
+
+  case object GetState extends Command
 
   case class TransitionFired(
     transition_id: Long,
@@ -26,7 +28,7 @@ object PersistentPetriNetActor {
     time_completed: Long,
     consumed: ColoredMarking,
     produced: ColoredMarking,
-    out: Any)
+    out: Any) extends Command
 
   sealed trait TransitionResult
 
@@ -45,11 +47,13 @@ object PersistentPetriNetActor {
 
   protected case class JobTimedout(id: Long)
 
-  def props[S](id: UUID, process: ColoredPetriNetProcess[S], initialMarking: ColoredMarking, initialState: S) =
-    Props(new PersistentPetriNetActor[S](id: UUID, process, initialMarking, initialState))
+  def props[S](process: ExecutablePetriNet[S], initialMarking: ColoredMarking, initialState: S) =
+    Props(new PersistentPetriNetActor[S](process, initialMarking, initialState))
 }
 
-class PersistentPetriNetActor[S](id: UUID, process: ColoredPetriNetProcess[S], initialMarking: ColoredMarking, initialState: S) extends PersistentActor with ActorLogging with DefaultEventAdapter[S] {
+class PersistentPetriNetActor[S](process: ExecutablePetriNet[S], initialMarking: ColoredMarking, initialState: S) extends PersistentActor with ActorLogging with PetriNetEventAdapter[S] {
+
+  val id = context.self.path.name
 
   override def persistenceId: String = s"process-$id"
 
