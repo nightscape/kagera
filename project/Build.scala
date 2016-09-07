@@ -82,7 +82,6 @@ object Build extends Build {
         akkaPersistence,
         akkaSlf4j,
         graph,
-        akkaPersistenceCassandra % "test",
         akkaTestkit % "test",
         scalatest   % "test")
     ))
@@ -104,6 +103,6 @@ object Build extends Build {
     ))
 
 
-  lazy val root = Project("kagera", file(".")).aggregate(api, akka, analyse, visualization)
+  lazy val root = Project("kagera", file(".")).aggregate(api, akka, visualization)
     .settings(defaultProjectSettings).settings(publish := { })
 }

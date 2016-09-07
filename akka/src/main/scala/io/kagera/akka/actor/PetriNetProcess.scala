@@ -34,12 +34,12 @@ object PetriNetProcess {
 
   // events
   case class TransitionFired(
-                              transition_id: Long,
-                              time_started: Long,
-                              time_completed: Long,
-                              consumed: Marking,
-                              produced: Marking,
-                              out: Any)
+    transition_id: Long,
+    time_started: Long,
+    time_completed: Long,
+    consumed: Marking,
+    produced: Marking,
+    out: Any)
 
   protected case class JobCompleted(id: Long)
 
