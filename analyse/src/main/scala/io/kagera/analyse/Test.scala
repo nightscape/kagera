@@ -1,7 +1,7 @@
 package io.kagera.analyse
 
 import akka.analytics.cassandra.JournalKey
-import org.apache.spark.{SparkConf, SparkContext}
+import org.apache.spark.{ SparkConf, SparkContext }
 import org.apache.spark.rdd.RDD
 import akka.analytics.cassandra._
 import com.typesafe.config.ConfigFactory
