@@ -1,13 +1,11 @@
 package io.kagera.demo
-import akka.actor.{ActorRef, ActorSystem}
+import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.stream.ActorMaterializer
-import com.typesafe.config.Config
 import io.kagera.demo.http.Routes
 
 import scala.concurrent.ExecutionContextExecutor
-import scala.util.{Failure, Success}
-
+import scala.util.{ Failure, Success }
 
 trait ConfiguredActorSystem {
 
@@ -16,14 +14,12 @@ trait ConfiguredActorSystem {
   implicit val materializer = ActorMaterializer()
 }
 
-trait HttpApi extends ConfiguredActorSystem with Routes
-
-object Main extends App with HttpApi {
+object Main extends App with ConfiguredActorSystem with Routes {
 
   val interface: String = "localhost"
   val port: Int = 8080
 
-  val bind = Http().bindAndHandle(routes, interface, port)
+  val bind = Http().bindAndHandle(processRoutes, interface, port)
   val httpBind = s"http://${interface}:${port}"
 
   bind.onComplete {
@@ -34,6 +30,4 @@ object Main extends App with HttpApi {
   scala.sys.ShutdownHookThread {
     // Do some clean up?
   }
-
-  override def stateActor: ActorRef = ???
 }
