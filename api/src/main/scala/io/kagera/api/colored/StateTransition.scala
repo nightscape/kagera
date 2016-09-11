@@ -7,7 +7,7 @@ import scala.concurrent.duration.Duration
 
 abstract class StateTransition[I, E, S](id: Long, label: String, isManaged: Boolean, duration: Duration) extends AbstractTransition[I, E, S](id, label, isManaged, duration) {
 
-  override def apply(inAdjacent: MultiSet[Place[_]], outAdjacent: MultiSet[Place[_]])(implicit executor: ExecutionContext): (ColoredMarking, S, I) ⇒ Future[(ColoredMarking, E)] = {
+  override def apply(inAdjacent: MultiSet[Place[_]], outAdjacent: MultiSet[Place[_]])(implicit executor: ExecutionContext): (Marking, S, I) ⇒ Future[(Marking, E)] = {
     (consume, state, input) ⇒
       {
         val produce = outAdjacent.map {
@@ -19,5 +19,5 @@ abstract class StateTransition[I, E, S](id: Long, label: String, isManaged: Bool
       }
   }
 
-  def produceEvent(consume: ColoredMarking, state: S, input: I): Future[E]
+  def produceEvent(consume: Marking, state: S, input: I): Future[E]
 }

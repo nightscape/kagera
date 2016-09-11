@@ -26,7 +26,7 @@ class ExecutorSpec extends WordSpec {
         mockedTransition ~> p2
       )
 
-      val m = ColoredMarking(p1(()))
+      val m = Marking(p1(()))
     }
   }
 }

@@ -6,7 +6,7 @@ import akka.http.scaladsl.server.Directives
 import akka.util.Timeout
 import io.kagera.akka.actor.PetriNetProcess
 import io.kagera.akka.actor.PetriNetProcess._
-import io.kagera.api.colored.{ ColoredMarking, ExecutablePetriNet }
+import io.kagera.api.colored.{ Marking, ExecutablePetriNet }
 import io.kagera.demo.{ ConfiguredActorSystem, TestProcess }
 import akka.pattern.ask
 import akka.persistence.cassandra.query.scaladsl.CassandraReadJournal
@@ -50,7 +50,7 @@ trait Routes extends Directives with TestProcess {
       post {
 
         val id = java.util.UUID.randomUUID().toString
-        val props = PetriNetProcess.props(sequentialProcess, ColoredMarking.empty, ())
+        val props = PetriNetProcess.props(sequentialProcess, Marking.empty, ())
         system.actorOf(props, id).path.name
 
         complete(id)
