@@ -136,7 +136,7 @@ class PetriNetProcess[S](process: ExecutablePetriNet[S], initialMarking: Marking
 
   def fireAllEnabled(available: Marking): Unit = {
     process.enabledParameters(availableMarking).find {
-      case (t, markings) ⇒ t.isManaged
+      case (t, markings) ⇒ t.isAutomated
     }.foreach {
       case (t, markings) ⇒
         log.debug(s"Transition $t is automated and enabled: firing")
