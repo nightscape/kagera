@@ -188,8 +188,8 @@ class PersistentPetriNetActorSpec extends TestKit(ActorSystem("test", Persistent
 
         // expect that the two subsequent transitions are fired automatically and in parallel (in any order)
         expectMsgInAnyOrderPF(
-          { case TransitionFired(t2.id, _, _, result, _) ⇒ },
-          { case TransitionFired(t3.id, _, _, result, _) ⇒ }
+          { case TransitionFired(`t2`, _, _, _, _) ⇒ },
+          { case TransitionFired(`t3`, _, _, _, _) ⇒ }
         )
       }
     }
