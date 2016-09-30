@@ -13,6 +13,8 @@ import scala.util.{ Failure, Random, Success }
 
 object PetriNetProcess {
 
+  type ProcessId = String
+
   // commands
   trait Command
 
@@ -79,7 +81,7 @@ object PetriNetProcess {
   /**
    * Response containing the state of the process.
    */
-  case class State[S](marking: Marking, state: S)
+  case class State[S](marking: Marking, markingSequence: BigInt, state: S)
 
   /**
    * An event describing the fact that a transition has fired in the petri net process.
@@ -105,7 +107,7 @@ object PetriNetProcess {
 
   case class ExceptionState(consumed: Marking, exceptionStrategy: ExceptionStrategy, consecutiveFailureCount: Int)
 
-  def props[S](process: ExecutablePetriNet[S], initialStateProvider: String ⇒ (Marking, S)): Props =
+  def props[S](process: ExecutablePetriNet[S], initialStateProvider: ProcessId ⇒ (Marking, S)): Props =
     Props(new PetriNetProcess[S](process, initialStateProvider))
 
   def props[S](process: ExecutablePetriNet[S], initialMarking: Marking, initialState: S): Props =
@@ -115,7 +117,7 @@ object PetriNetProcess {
 /**
  * This actor is responsible for maintaining the state of a single petri net instance.
  */
-class PetriNetProcess[S](process: ExecutablePetriNet[S], initialState: String ⇒ (Marking, S)) extends PersistentActor with ActorLogging with PetriNetEventAdapter[S] {
+class PetriNetProcess[S](process: ExecutablePetriNet[S], initialState: ProcessId ⇒ (Marking, S)) extends PersistentActor with ActorLogging with PetriNetEventAdapter[S] {
 
   val processId = context.self.path.name
 
@@ -127,6 +129,7 @@ class PetriNetProcess[S](process: ExecutablePetriNet[S], initialState: String �
 
   // state
   var (currentMarking, state) = initialState(processId)
+  var markingSequence: BigInt = 1
   val runningJobs: mutable.Map[Long, Job] = mutable.Map.empty
   val failures: mutable.Map[Long, ExceptionState] = mutable.Map.empty
 
@@ -148,7 +151,7 @@ class PetriNetProcess[S](process: ExecutablePetriNet[S], initialState: String �
 
   override def receiveCommand = {
     case GetState ⇒
-      sender() ! State[S](currentMarking, state)
+      sender() ! State[S](currentMarking, markingSequence, state)
 
     case JobCompleted(id) ⇒
       val job = runningJobs(id)
@@ -161,8 +164,6 @@ class PetriNetProcess[S](process: ExecutablePetriNet[S], initialState: String �
             val response = TransitionFired[S](job.transition, e.consumed, e.produced, currentMarking, state)
             // remove the job from the running jobs
             runningJobs -= id
-            // remove the transition from the failures
-            failures -= job.transition.id
             fireAllEnabledTransitions()
             sender() ! response
           }
@@ -252,10 +253,12 @@ class PetriNetProcess[S](process: ExecutablePetriNet[S], initialState: String �
   }
 
   def applyEvent: Receive = {
-    case e: TransitionFiredEvent ⇒
-      currentMarking = currentMarking -- e.consumed ++ e.produced
-      val t = process.getTransitionById(e.transition_id)
-      state = t.updateState(state)(e.out)
+    case TransitionFiredEvent(transition_id, _, _, consumed, produced, out) ⇒
+      currentMarking = currentMarking -- consumed ++ produced
+      val t = process.getTransitionById(transition_id)
+      state = t.updateState(state)(out)
+      failures -= transition_id
+      markingSequence += 1
   }
 
   override def receiveRecover: Receive = {
