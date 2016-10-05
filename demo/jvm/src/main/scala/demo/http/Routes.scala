@@ -1,15 +1,15 @@
 package io.kagera.demo.http
 
-import akka.http.scaladsl.model.{ContentTypes, HttpEntity, HttpResponse, MediaTypes}
+import akka.http.scaladsl.model.{ ContentTypes, HttpEntity, HttpResponse, MediaTypes }
 import akka.http.scaladsl.marshalling
 import akka.http.scaladsl.server.Directives
 import akka.pattern.ask
-import akka.util.{ByteString, Timeout}
+import akka.util.{ ByteString, Timeout }
 import demo.http.StaticPages
 import io.kagera.akka.actor.PetriNetProcess
 import io.kagera.akka.actor.PetriNetProcess._
-import io.kagera.api.colored.{ExecutablePetriNet, Generators, Marking, Place, Transition}
-import io.kagera.demo.{ConfiguredActorSystem, TestProcess}
+import io.kagera.api.colored.{ ExecutablePetriNet, Generators, Marking, Place, Transition }
+import io.kagera.demo.{ ConfiguredActorSystem, TestProcess }
 import io.kagera.dot.GraphDot
 
 trait Routes extends Directives with TestProcess {

@@ -27,7 +27,6 @@ object Build extends Build {
     incOptions    := incOptions.value.withNameHashing(true)
   )
 
-
   lazy val scalaPBSettings = PB.protobufSettings ++ Seq(
     PB.runProtoc in PB.protobufConfig := (args =>
       com.github.os72.protocjar.Protoc.runProtoc("-v261" +: args.toArray))
@@ -75,6 +74,8 @@ object Build extends Build {
         libraryDependencies ++= Seq(akkaAnalyticsCassandra, akkaHttp)
       ))
 
+  val cytoscapeVersion = "2.7.9"
+
   lazy val demo = (crossProject.crossType(CrossType.Full) in file("demo")).
     settings(defaultProjectSettings: _*).
     settings(
@@ -83,9 +84,14 @@ object Build extends Build {
         "com.lihaoyi" %%% "scalatags" % "0.4.6"
       )).
     jsSettings(
+        jsDependencies ++= Seq(
+          "org.webjars.bower" % "cytoscape" % cytoscapeVersion
+            / s"$cytoscapeVersion/dist/cytoscape.js"
+            minified s"$cytoscapeVersion/dist/cytoscape.min.js"
+            commonJSName "cytoscape"
+        ),
         libraryDependencies ++= Seq(
-          "org.scala-js" %%% "scalajs-dom" % "0.8.0"
-      )).
+          "org.scala-js"    %%% "scalajs-dom" % "0.8.0")).
     jvmSettings(
         libraryDependencies ++= Seq(
           akkaHttp,
@@ -97,8 +103,10 @@ object Build extends Build {
 
   lazy val demoJs = demo.js
   lazy val demoJvm = demo.jvm.dependsOn(api, visualization, akka, analyse).settings(
-    // include javascript compiled resources from js module
-    (resources in Compile) += (fastOptJS in (demoJs, Compile)).value.data
+    // include the compiled javascript result from js module
+    (resources in Compile) += (fastOptJS in (demoJs, Compile)).value.data,
+    // include the javascript dependencies
+    (resources in Compile) += (packageJSDependencies in (demoJs, Compile)).value
   )
 
   lazy val root = Project("kagera", file(".")).aggregate(api, akka, visualization)
