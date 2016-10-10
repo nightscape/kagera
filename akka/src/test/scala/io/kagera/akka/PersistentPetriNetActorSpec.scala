@@ -7,7 +7,7 @@ import akka.testkit.{ ImplicitSender, TestKit }
 import com.typesafe.config.ConfigFactory
 import io.kagera.akka.PersistentPetriNetActorSpec._
 import io.kagera.akka.actor.PetriNetProcess
-import io.kagera.akka.actor.PetriNetProcess._
+import io.kagera.akka.actor.PetriNetProcessProtocol._
 import io.kagera.api.colored.ExceptionStrategy.{ Fatal, RetryWithDelay }
 import io.kagera.api.colored._
 import io.kagera.api.colored.dsl._
@@ -144,7 +144,8 @@ class PersistentPetriNetActorSpec extends TestKit(ActorSystem("test", Persistent
       actor ! FireTransition(t1)
 
       // expect the transition to be not enabled
-      expectMsgClass(classOf[TransitionNotEnabled])
+      val msg = expectMsgClass(classOf[TransitionNotEnabled])
+      println(s"msg: $msg")
     }
 
     "Be able to restore it's state after termination" in new StateTransitionNet[Set[Int], Event] {
@@ -175,7 +176,7 @@ class PersistentPetriNetActorSpec extends TestKit(ActorSystem("test", Persistent
       // assert that the actor is in the initial state
       actor ! GetState
 
-      expectMsg(State[Set[Int]](initialMarking, 1, Set.empty))
+      expectMsg(ProcessState[Set[Int]](1, initialMarking, Set.empty))
 
       // fire the first transition (t1) manually
       actor ! FireTransition(t1)
@@ -197,7 +198,7 @@ class PersistentPetriNetActorSpec extends TestKit(ActorSystem("test", Persistent
       newActor ! GetState
 
       // assert that the marking is the same as before termination
-      expectMsg(State[Set[Int]](Marking(p3 -> 1), 3, Set(1, 2)))
+      expectMsg(ProcessState[Set[Int]](3, Marking(p3 -> 1), Set(1, 2)))
     }
 
     "fire automatic transitions in parallel when possible" in new StateTransitionNet[Unit, Unit] {
