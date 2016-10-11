@@ -21,7 +21,7 @@ trait Routes extends Directives with TestProcess {
   implicit val timeout = Timeout(2 seconds)
 
   val repository: Map[String, ExecutablePetriNet[_]] = Map(
-    "test" -> Generators.uncoloredSequential(5)
+    "test" -> Generators.sequential(length = 5, automated = false)
   )
 
   import io.kagera.dot.PetriNetDot._
@@ -29,7 +29,7 @@ trait Routes extends Directives with TestProcess {
   val dot = GraphDot.generateDot(repository.head._2.innerGraph, petriNetTheme[Place[_], Transition[_, _, _]])
 
   val repositoryRoutes = pathPrefix("process") {
-    path("dot") {
+    path("test") {
       get { complete(dot) }
     }
   }

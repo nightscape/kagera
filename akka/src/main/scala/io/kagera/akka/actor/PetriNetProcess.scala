@@ -9,7 +9,7 @@ import io.kagera.api.colored.ExceptionStrategy.RetryWithDelay
 import io.kagera.api.colored._
 
 import scala.collection._
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ ExecutionContext, Future }
 import scala.concurrent.duration._
 import scala.language.existentials
 import scala.util.Random
@@ -22,6 +22,8 @@ object PetriNetProcess {
   def props[S](process: ExecutablePetriNet[S], initialMarking: Marking, initialState: S): Props =
     props(process, id ⇒ (initialMarking, initialState))
 
+  sealed trait TransitionEvent
+
   /**
    * An event describing the fact that a transition has fired in the petri net process.
    */
@@ -32,7 +34,7 @@ object PetriNetProcess {
     time_completed: Long,
     consumed: Marking,
     produced: Marking,
-    out: Any)
+    out: Any) extends TransitionEvent
 
   /**
    * An event describing the fact that a transition failed to fire.
@@ -44,7 +46,8 @@ object PetriNetProcess {
     time_failed: Long,
     consume: Marking,
     input: Any,
-    exceptionStrategy: ExceptionStrategy)
+    failureReason: String,
+    exceptionStrategy: ExceptionStrategy) extends TransitionEvent
 
   case class Job[S](
       id: Long,
@@ -56,15 +59,31 @@ object PetriNetProcess {
       startTime: Long) {
 
     var failureCount = 0
+    var lastRun: Future[TransitionEvent] = null
 
-    def run()(implicit ec: ExecutionContext) = process.fireTransition(transition)(consume, processState, input).map {
-      case (produced, out) ⇒ TransitionFiredEvent(id, transition.id, startTime, System.currentTimeMillis(), consume, produced, out)
-    }.recover {
-      case e: Throwable ⇒
-        failureCount += 1
-        TransitionFailedEvent(id, transition.id, startTime, System.currentTimeMillis(), consume, input, transition.exceptionStrategy(e, failureCount))
+    def failure: Option[ExceptionState] = lastRun match {
+      case null ⇒ None
+      case future if future.isCompleted ⇒ future.value.get.get match {
+        case e: TransitionFailedEvent ⇒ Some(ExceptionState(transition.id, e.failureReason, e.exceptionStrategy))
+        case _                        ⇒ None
+      }
+      case _ ⇒ None
+    }
+
+    def run()(implicit ec: ExecutionContext): Future[TransitionEvent] = {
+
+      lastRun = process.fireTransition(transition)(consume, processState, input).map {
+        case (produced, out) ⇒ TransitionFiredEvent(id, transition.id, startTime, System.currentTimeMillis(), consume, produced, out)
+      }.recover {
+        case e: Throwable ⇒
+          failureCount += 1
+          TransitionFailedEvent(id, transition.id, startTime, System.currentTimeMillis(), consume, input, e.getCause.getMessage, transition.exceptionStrategy(e, failureCount))
+      }
+      lastRun
     }
   }
+
+  protected case class ExceptionState(transitionId: Long, failureReason: String, failureStrategy: ExceptionStrategy)
 
   protected case class ExecutionState[S](
       process: ExecutablePetriNet[S],
@@ -81,7 +100,15 @@ object PetriNetProcess {
     // The marking that is available for new transitions / jobs.
     lazy val availableMarking: Marking = marking -- reservedMarking
 
-    def isBlocked(transition_id: Long) = false //failedJobs.get(transition_id).isDefined || failedJobs.values.exists(_ == Fatal)
+    def failedJobs: Iterable[ExceptionState] = jobs.values.map(_.failure).flatten
+
+    def isBlockedReason(transition_id: Long): Option[String] = failedJobs.map {
+      case ExceptionState(tid, reason, ExceptionStrategy.Fatal) ⇒
+        Some(s"Transition '${process.getTransitionById(tid)}' caused a Fatal exception")
+      case ExceptionState(`transition_id`, reason, _) ⇒
+        Some(s"Transition '${process.getTransitionById(transition_id)}' is blocked because it failed previously with: $reason")
+      case _ ⇒ None
+    }.find(_.isDefined).flatten
 
     protected def currentTime(): Long = System.currentTimeMillis()
 
@@ -102,16 +129,18 @@ object PetriNetProcess {
      * Fires a specific transition with input, computes the marking it should consume
      */
     def fireTransition(transition: Transition[Any, _, S], input: Any): (ExecutionState[S], Either[Job[S], String]) = {
-      if (isBlocked(transition))
-        (this, Right(s"Blocked"))
-      else
-        process.enabledParameters(availableMarking).get(transition) match {
-          case None ⇒
-            (this, Right(s"Not enough consumable tokens"))
-          case Some(params) ⇒
-            val (state, job) = createJob(transition, params.head, input)
-            (state, Left(job))
-        }
+      isBlockedReason(transition.id) match {
+        case Some(reason) ⇒
+          (this, Right(reason))
+        case None ⇒
+          process.enabledParameters(availableMarking).get(transition) match {
+            case None ⇒
+              (this, Right(s"Not enough consumable tokens"))
+            case Some(params) ⇒
+              val (state, job) = createJob(transition, params.head, input)
+              (state, Left(job))
+          }
+      }
     }
 
     /**
@@ -125,7 +154,7 @@ object PetriNetProcess {
 
     def fireAllEnabledTransitions(): (ExecutionState[S], Set[Job[S]]) = {
       val enabled = process.enabledParameters(availableMarking).find {
-        case (t, markings) ⇒ t.isAutomated && !isBlocked(t)
+        case (t, markings) ⇒ t.isAutomated && !isBlockedReason(t).isDefined
       }
 
       enabled.headOption.map {
@@ -175,9 +204,9 @@ class PetriNetProcess[S](process: ExecutablePetriNet[S], initialStateFn: String 
         sender() ! TransitionFired[S](transitionId, e.consumed, e.produced, newState.marking, newState.state)
       }
 
-    case e @ TransitionFailedEvent(jobId, transitionId, timeStarted, timeFailed, consume, input, strategy @ RetryWithDelay(delay)) ⇒
+    case e @ TransitionFailedEvent(jobId, transitionId, timeStarted, timeFailed, consume, input, reason, strategy @ RetryWithDelay(delay)) ⇒
 
-      log.warning(s"Transition '${transitionId}' failed: {}")
+      log.warning(s"Transition '${transitionId}' failed: {}", reason)
       log.info(s"Scheduling a retry of transition ${transitionId} in $delay milliseconds")
 
       val originalSender = sender()
@@ -185,9 +214,9 @@ class PetriNetProcess[S](process: ExecutablePetriNet[S], initialStateFn: String 
 
       sender() ! TransitionFailed(transitionId, consume, input, "", strategy)
 
-    case e @ TransitionFailedEvent(jobId, transitionId, timeStarted, timeFailed, consume, input, strategy) ⇒
+    case e @ TransitionFailedEvent(jobId, transitionId, timeStarted, timeFailed, consume, input, reason, strategy) ⇒
 
-      log.warning(s"Transition '${transitionId}' failed: {}")
+      log.warning(s"Transition '${transitionId}' failed: {}", reason)
       sender() ! TransitionFailed(transitionId, consume, input, "", strategy)
 
     case FireTransition(id, input, _) ⇒
