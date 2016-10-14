@@ -28,10 +28,10 @@ object PetriNetProcess {
    * An event describing the fact that a transition has fired in the petri net process.
    */
   case class TransitionFiredEvent(
-    job_id: Long,
-    transition_id: Long,
-    time_started: Long,
-    time_completed: Long,
+    jobId: Long,
+    transitionId: Long,
+    timeStarted: Long,
+    timeCompleted: Long,
     consumed: Marking,
     produced: Marking,
     out: Any) extends TransitionEvent
@@ -40,10 +40,10 @@ object PetriNetProcess {
    * An event describing the fact that a transition failed to fire.
    */
   case class TransitionFailedEvent(
-    job_id: Long,
-    transition_id: Long,
-    time_started: Long,
-    time_failed: Long,
+    jobId: Long,
+    transitionId: Long,
+    timeStarted: Long,
+    timeFailed: Long,
     consume: Marking,
     input: Any,
     failureReason: String,
@@ -102,11 +102,11 @@ object PetriNetProcess {
 
     def failedJobs: Iterable[ExceptionState] = jobs.values.map(_.failure).flatten
 
-    def isBlockedReason(transition_id: Long): Option[String] = failedJobs.map {
+    def isBlockedReason(transitionId: Long): Option[String] = failedJobs.map {
       case ExceptionState(tid, reason, ExceptionStrategy.Fatal) ⇒
         Some(s"Transition '${process.getTransitionById(tid)}' caused a Fatal exception")
-      case ExceptionState(`transition_id`, reason, _) ⇒
-        Some(s"Transition '${process.getTransitionById(transition_id)}' is blocked because it failed previously with: $reason")
+      case ExceptionState(`transitionId`, reason, _) ⇒
+        Some(s"Transition '${process.getTransitionById(transitionId)}' is blocked because it failed previously with: $reason")
       case _ ⇒ None
     }.find(_.isDefined).flatten
 
@@ -115,13 +115,13 @@ object PetriNetProcess {
     protected def nextJobId(): Long = Random.nextLong()
 
     def apply(e: TransitionFiredEvent) = {
-      val t = process.getTransitionById(e.transition_id)
+      val t = process.getTransitionById(e.transitionId)
       val newState = t.updateState(state)(e.out)
       copy(
         sequenceNr = this.sequenceNr + 1,
         marking = this.marking -- e.consumed ++ e.produced,
         state = newState,
-        jobs = this.jobs - e.job_id
+        jobs = this.jobs - e.jobId
       )
     }
 
@@ -207,19 +207,19 @@ class PetriNetProcess[S](process: ExecutablePetriNet[S], initialStateFn: String 
     case e @ TransitionFailedEvent(jobId, transitionId, timeStarted, timeFailed, consume, input, reason, strategy @ RetryWithDelay(delay)) ⇒
 
       log.warning(s"Transition '${transitionId}' failed: {}", reason)
-      log.info(s"Scheduling a retry of transition ${transitionId} in $delay milliseconds")
 
+      log.info(s"Scheduling a retry of transition ${transitionId} in $delay milliseconds")
       val originalSender = sender()
       system.scheduler.scheduleOnce(delay milliseconds) { executeJob(state.jobs(jobId), originalSender) }
 
-      sender() ! TransitionFailed(transitionId, consume, input, "", strategy)
+      sender() ! TransitionFailed(transitionId, consume, input, reason, strategy)
 
     case e @ TransitionFailedEvent(jobId, transitionId, timeStarted, timeFailed, consume, input, reason, strategy) ⇒
 
       log.warning(s"Transition '${transitionId}' failed: {}", reason)
-      sender() ! TransitionFailed(transitionId, consume, input, "", strategy)
+      sender() ! TransitionFailed(transitionId, consume, input, reason, strategy)
 
-    case FireTransition(id, input, _) ⇒
+    case FireTransition(id, input, correlationId) ⇒
       log.debug(s"Received message to fire transition $id with input: $input")
 
       process.findTransitionById(id) match {

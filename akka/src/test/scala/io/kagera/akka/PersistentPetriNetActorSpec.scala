@@ -104,7 +104,7 @@ class PersistentPetriNetActorSpec extends TestKit(ActorSystem("test", Persistent
       actor ! FireTransition(t1, ())
 
       // expect a failure message
-      expectMsgPF() { case TransitionNotEnabled(t1.id, msg) ⇒ println(msg) }
+      expectMsgPF() { case TransitionNotEnabled(t1.id, msg) ⇒ }
     }
 
     "Respond with a TransitionNotEnabled message if a transition is not enabled because of not enough consumable tokens" in new StateTransitionNet[Set[Int], Event] {
@@ -180,11 +180,11 @@ class PersistentPetriNetActorSpec extends TestKit(ActorSystem("test", Persistent
       val t1 = transition(id = 1) {
         set ⇒ Added(1)
       }
-      val t2 = transition(id = 2, isManaged = true) {
+      val t2 = transition(id = 2, automated = true) {
         set ⇒ Added(2)
       }
 
-      val petriNet = process[Set[Int]](
+      val petriNet = createPetriNet(
         p1 ~> t1,
         t1 ~> p2,
         p2 ~> t2,
