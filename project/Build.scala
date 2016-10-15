@@ -86,6 +86,7 @@ object Build extends Build {
           "org.scala-js"    %%% "scalajs-dom" % "0.8.0")).
     jvmSettings(
         libraryDependencies ++= Seq(
+          "de.heikoseeberger" %% "akka-http-upickle" % "1.10.1",
           akkaHttp,
           akkaPersistenceQuery,
           akkaPersistenceCassandra),

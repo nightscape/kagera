@@ -3,7 +3,7 @@ package io.kagera.demo.http
 import scalatags.Text.all._
 
 object StaticPages {
-  val dashboard =
+  val index =
     html(
       head(
         script(src := "resources/demo-fastopt.js"),

@@ -1,30 +1,50 @@
 package io.kagera.demo.http
 
+import akka.http.scaladsl.common.{ CsvEntityStreamingSupport, EntityStreamingSupport, JsonEntityStreamingSupport }
+import akka.http.scaladsl.marshalling.{ Marshaller, Marshalling }
 import akka.http.scaladsl.model.{ ContentTypes, HttpEntity, HttpResponse, StatusCodes }
+import akka.http.scaladsl.marshalling.PredefinedToEntityMarshallers._
 import akka.http.scaladsl.server.Directives
 import akka.pattern.ask
 import akka.util.{ ByteString, Timeout }
+import de.heikoseeberger.akkahttpupickle.UpickleSupport
+import io.kagera.akka.actor.PetriNetProcess
 import io.kagera.akka.actor.PetriNetProcessProtocol._
-import io.kagera.api.colored.{ ExecutablePetriNet, Generators }
-import io.kagera.demo.ConfiguredActorSystem
+import io.kagera.api.colored.{ ExecutablePetriNet, Generators, Marking }
+import io.kagera.demo.{ ConfiguredActorSystem, Queries }
 
-trait Routes extends Directives {
+trait Routes extends Directives with Queries with UpickleSupport {
 
   this: ConfiguredActorSystem ⇒
 
   import scala.concurrent.duration._
 
+  implicit val streamingSupport: JsonEntityStreamingSupport = EntityStreamingSupport.json()
   implicit val timeout = Timeout(2 seconds)
+
+  implicit val stringMarshaller = Marshaller.strict[String, ByteString] { t ⇒
+    Marshalling.WithFixedContentType(ContentTypes.`application/json`, () ⇒ {
+      ByteString(s""""$t"""")
+    })
+  }
 
   val repository: Map[String, ExecutablePetriNet[_]] = Map(
     "test" -> Generators.Uncolored.sequence(5)
   )
 
-  val repositoryRoutes = pathPrefix("process") {
-    path("_index") {
+  val indexRoute = path("index.html") {
+    get {
+      complete {
+        HttpResponse(entity = HttpEntity(ContentTypes.`text/html(UTF-8)`, ByteString(StaticPages.index.render)))
+      }
+    }
+  }
+
+  val topologyRoutes = pathPrefix("process_topology") {
+    path("index") {
       complete(upickle.default.write(repository.keySet))
     } ~
-      path(Segment) { id ⇒
+      path("by_id" / Segment) { id ⇒
         get {
           repository.get(id) match {
             case None          ⇒ complete(StatusCodes.NotFound -> s"no such process: $id")
@@ -34,53 +54,53 @@ trait Routes extends Directives {
       }
   }
 
-  val dashBoardRoute = path("dashboard") {
-    get {
-      complete {
-        HttpResponse(entity = HttpEntity(ContentTypes.`text/html(UTF-8)`, ByteString(StaticPages.dashboard.render)))
-      }
-    }
-  }
+  val resourceRoutes = pathPrefix("resources") { getFromResourceDirectory("") }
 
-  val resources = pathPrefix("resources") { getFromResourceDirectory("") }
+  def actorForProcess(id: String) = system.actorSelection(s"/user/$id")
 
   val processRoutes = pathPrefix("process") {
 
-    path("_create") {
-      post {
-        complete("foo")
+    path("index") {
+      get {
+        complete(allProcessIds)
       }
     } ~
-      path(Segment) { id ⇒
-        {
-          val actorSelection = system.actorSelection(s"/user/$id")
+      path("create" / Segment) { topologyId ⇒
+        post {
+          val topology = repository(topologyId).asInstanceOf[ExecutablePetriNet[Unit]]
+          val id = java.util.UUID.randomUUID.toString
+          system.actorOf(PetriNetProcess.props(topology, Marking.empty, ()), id)
+          complete(id)
+        }
+      } ~
+      pathPrefix("by_id" / Segment) { id ⇒
 
-          pathEndOrSingleSlash {
-            get {
-              // should return the current state (marking) of the process
-              val futureResult = actorSelection.ask(GetState).mapTo[ProcessState[_]].map {
-                state ⇒ state.marking.toString
-              }
-              complete(futureResult)
-            }
-          } ~
-            path("fire" / Segment) { tid ⇒
-              post {
-                val msg = FireTransition(tid.toLong, ())
-                val futureResult = actorSelection.ask(msg).mapTo[TransitionResult].map {
-                  case success: TransitionFired[_] ⇒ "success"
-                  case failure: TransitionFailed   ⇒ "failure"
-                }
-                complete(futureResult)
-              }
-            }
+        val processActor = actorForProcess(id)
 
-          path("step") {
-            // should attempt to fire the next enabled transition
-            post { complete("") }
+        pathEndOrSingleSlash {
+          get {
+            // should return the current state (marking) of the process
+            val futureResult = processActor.ask(GetState).mapTo[ProcessState[_]].map {
+              state ⇒ state.marking.toString
+            }
+            complete(futureResult)
+          }
+        } ~ path("journal") {
+          get {
+            val journal = journalFor(id)
+            complete(journal)
+          }
+        } ~ path("fire" / Segment) { tid ⇒
+          post {
+            val msg = FireTransition(tid.toLong, ())
+            val futureResult = processActor.ask(msg).mapTo[TransitionResult].map {
+              case success: TransitionFired[_]      ⇒ "success"
+              case failure: TransitionFailed        ⇒ "failure"
+              case notEnabled: TransitionNotEnabled ⇒ "not enabled"
+            }
+            complete(futureResult)
           }
         }
       }
-
   }
 }
