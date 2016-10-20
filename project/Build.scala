@@ -32,7 +32,7 @@ object Build extends Build {
       com.github.os72.protocjar.Protoc.runProtoc("-v261" +: args.toArray))
   )
 
-  lazy val defaultProjectSettings = basicSettings ++ formattingSettings ++ Revolver.settings ++ Sonatype.settings ++ scalaPBSettings
+  lazy val defaultProjectSettings = basicSettings ++ formattingSettings ++ Revolver.settings ++ SonatypePublish.settings ++ scalaPBSettings
 
   lazy val api = Project("api", file("api"))
     .settings(defaultProjectSettings: _*)
