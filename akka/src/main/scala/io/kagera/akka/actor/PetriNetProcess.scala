@@ -15,13 +15,11 @@ import scala.language.existentials
 
 object PetriNetProcess {
 
-  def props[S](process: ExecutablePetriNet[S], initialStateProvider: String ⇒ (Marking, S)): Props =
-    Props(new PetriNetProcess[S](process, initialStateProvider))
+  def props[S](process: ExecutablePetriNet[S]): Props = Props(new PetriNetProcess[S](process))
 
-  def props[S](process: ExecutablePetriNet[S], initialMarking: Marking, initialState: S): Props =
-    props(process, id ⇒ (initialMarking, initialState))
+  sealed trait Event
 
-  sealed trait TransitionEvent
+  sealed trait TransitionEvent extends Event
 
   /**
    * An event describing the fact that a transition has fired in the petri net process.
@@ -47,12 +45,16 @@ object PetriNetProcess {
     input: Any,
     failureReason: String,
     exceptionStrategy: ExceptionStrategy) extends TransitionEvent
+
+  case class InitializedEvent[S](
+    marking: Marking,
+    state: S) extends Event
 }
 
 /**
  * This actor is responsible for maintaining the state of a single petri net instance.
  */
-class PetriNetProcess[S](process: ExecutablePetriNet[S], initialStateFn: String ⇒ (Marking, S)) extends PersistentActor
+class PetriNetProcess[S](override val process: ExecutablePetriNet[S]) extends PersistentActor
     with ActorLogging with PetriNetActorRecovery[S] {
 
   val processId = context.self.path.name
@@ -61,18 +63,24 @@ class PetriNetProcess[S](process: ExecutablePetriNet[S], initialStateFn: String 
 
   import context.dispatcher
 
-  override def receiveCommand = Map.empty
+  override def receiveCommand = uninitialized
+
+  def uninitialized: Receive = {
+    case Initialize(marking, state) ⇒
+      persistEvent(ExecutionState.uninitialized(process), InitializedEvent(marking, state.asInstanceOf[S])) { (updatedState, e) ⇒
+        executeAllEnabledTransitions(updatedState)
+        sender() ! Initialized(marking, state)
+      }
+  }
 
   def running(state: ExecutionState[S]): Receive = {
     case GetState ⇒
       sender() ! state.processState
 
     case e @ TransitionFiredEvent(jobId, transitionId, timeStarted, timeCompleted, consumed, produced, output) ⇒
-      persist(writeEvent(e)) { persisted ⇒
-
+      persistEvent(state, e) { (updatedState, e) ⇒
         log.debug(s"Transition fired ${transitionId}")
-        val updatedState = state.apply(e)
-        executeAllEnabledTransitions(state.apply(e))
+        executeAllEnabledTransitions(updatedState)
         sender() ! TransitionFired[S](transitionId, e.consumed, e.produced, updatedState.marking, updatedState.state)
       }
 
@@ -117,8 +125,6 @@ class PetriNetProcess[S](process: ExecutablePetriNet[S], initialStateFn: String 
   }
 
   def executeJob[E](job: Job[S, E], originalSender: ActorRef) = job.run().pipeTo(context.self)(originalSender)
-
-  override def initialState = initialStateFn(processId) match { case (marking, state) ⇒ (process, marking, state) }
 
   override def onRecoveryCompleted(state: ExecutionState[S]) = executeAllEnabledTransitions(state)
 }
