@@ -49,8 +49,8 @@ class PersistentPetriNetActorSpec extends TestKit(ActorSystem("test", Persistent
     }
   }
 
-  def createPetriNetActor[S](petriNet: ExecutablePetriNet[S], initialMarking: Marking, state: S, actorName: String = UUID.randomUUID().toString) =
-    system.actorOf(PetriNetProcess.props(petriNet, initialMarking, state), actorName)
+  def createPetriNetActor[S](petriNet: ExecutablePetriNet[S], actorName: String = UUID.randomUUID().toString) =
+    system.actorOf(PetriNetProcess.props(petriNet), actorName)
 
   val integerSetEventSource: Set[Int] ⇒ Event ⇒ Set[Int] = set ⇒ {
     case Added(c)   ⇒ set + c
@@ -77,7 +77,11 @@ class PersistentPetriNetActorSpec extends TestKit(ActorSystem("test", Persistent
       )
 
       val initialMarking = Marking(p1 -> 1)
-      val actor = createPetriNetActor[Set[Int]](petriNet, initialMarking, Set.empty)
+      val actor = createPetriNetActor[Set[Int]](petriNet)
+
+      actor ! Initialize(initialMarking, Set.empty)
+
+      expectMsg(Initialized(initialMarking, Set.empty))
 
       actor ! FireTransition(t1, ())
 
@@ -95,7 +99,11 @@ class PersistentPetriNetActorSpec extends TestKit(ActorSystem("test", Persistent
       )
 
       val initialMarking = Marking(p1 -> 1)
-      val actor = createPetriNetActor[Set[Int]](petriNet, initialMarking, Set.empty)
+      val actor = createPetriNetActor[Set[Int]](petriNet)
+
+      actor ! Initialize(initialMarking, Set.empty)
+
+      expectMsg(Initialized(initialMarking, Set.empty))
 
       actor ! FireTransition(t1, ())
 
@@ -124,7 +132,11 @@ class PersistentPetriNetActorSpec extends TestKit(ActorSystem("test", Persistent
       // creates a petri net actor with initial marking: p1 -> 1
       val initialMarking = Marking(p1 -> 1)
 
-      val actor = createPetriNetActor[Set[Int]](petriNet, initialMarking, Set.empty)
+      val actor = createPetriNetActor[Set[Int]](petriNet)
+
+      actor ! Initialize(initialMarking, Set.empty)
+
+      expectMsg(Initialized(initialMarking, Set.empty))
 
       // attempt to fire the second transition
       actor ! FireTransition(t2)
@@ -154,7 +166,11 @@ class PersistentPetriNetActorSpec extends TestKit(ActorSystem("test", Persistent
       val id = UUID.randomUUID()
       val initialMarking = Marking(p1 -> 1)
 
-      val actor = createPetriNetActor[Set[Int]](petriNet, initialMarking, Set.empty)
+      val actor = createPetriNetActor[Set[Int]](petriNet)
+
+      actor ! Initialize(initialMarking, Set.empty)
+
+      expectMsg(Initialized(initialMarking, Set.empty))
 
       actor ! FireTransition(t1)
 
@@ -194,7 +210,11 @@ class PersistentPetriNetActorSpec extends TestKit(ActorSystem("test", Persistent
       // creates a petri net actor with initial marking: p1 -> 1
       val initialMarking = Marking(p1 -> 1)
 
-      val actor = createPetriNetActor[Set[Int]](petriNet, initialMarking, Set.empty, actorName)
+      val actor = createPetriNetActor[Set[Int]](petriNet, actorName)
+
+      actor ! Initialize(initialMarking, Set.empty)
+
+      expectMsg(Initialized(initialMarking, Set.empty))
 
       // assert that the actor is in the initial state
       actor ! GetState
@@ -216,7 +236,7 @@ class PersistentPetriNetActorSpec extends TestKit(ActorSystem("test", Persistent
       expectMsgClass(classOf[Terminated])
 
       // create a new actor with the same persistent identifier
-      val newActor = createPetriNetActor[Set[Int]](petriNet, initialMarking, Set.empty, actorName)
+      val newActor = createPetriNetActor[Set[Int]](petriNet, actorName)
 
       newActor ! GetState
 
@@ -245,7 +265,11 @@ class PersistentPetriNetActorSpec extends TestKit(ActorSystem("test", Persistent
       // creates a petri net actor with initial marking: p1 -> 1
       val initialMarking = Marking.empty
 
-      val actor = createPetriNetActor(petriNet, initialMarking, ())
+      val actor = createPetriNetActor(petriNet)
+
+      actor ! Initialize(initialMarking, ())
+
+      expectMsg(Initialized(initialMarking, ()))
 
       // fire the first transition manually
       actor ! FireTransition(t1)
