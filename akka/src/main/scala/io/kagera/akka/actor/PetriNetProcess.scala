@@ -3,6 +3,7 @@ package io.kagera.akka.actor
 import akka.actor.{ ActorLogging, ActorRef, Props }
 import akka.pattern.pipe
 import akka.persistence.PersistentActor
+import fs2.Strategy
 import io.kagera.akka.actor.PetriNetEventSourcing._
 import io.kagera.akka.actor.PetriNetExecution._
 import io.kagera.akka.actor.PetriNetProcessProtocol._
@@ -97,7 +98,10 @@ class PetriNetProcess[S](override val process: ExecutablePetriNet[S]) extends Pe
     context become running(updatedInstance)
   }
 
-  def executeJob[E](job: Job[S, E], originalSender: ActorRef) = runJob(job).pipeTo(context.self)(originalSender)
+  // TODO: best to use another thread pool
+  implicit val s: Strategy = Strategy.fromExecutionContext(context.dispatcher)
+
+  def executeJob[E](job: Job[S, E], originalSender: ActorRef) = runJob(job).unsafeRunAsyncFuture().pipeTo(context.self)(originalSender)
 
   override def onRecoveryCompleted(instance: Instance[S]) = executeAllEnabledTransitions(instance)
 }

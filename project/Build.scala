@@ -40,6 +40,8 @@ object Build extends Build {
       name := "kagera-api",
       libraryDependencies ++= Seq(
         scalaGraph,
+        catsCore,
+        fs2Core,
         shapeless,
         scalatest % "test"))
 

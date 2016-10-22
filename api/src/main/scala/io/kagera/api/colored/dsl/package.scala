@@ -1,5 +1,6 @@
 package io.kagera.api.colored
 
+import fs2.Task
 import io.kagera.api._
 import io.kagera.api.multiset._
 
@@ -30,17 +31,14 @@ package object dsl {
 
       override val toString = label
 
-      override def apply(inAdjacent: MultiSet[Place[_]], outAdjacent: MultiSet[Place[_]])(implicit executor: ExecutionContext): (Marking, S, I) ⇒ Future[(Marking, O)] = {
+      override def apply(inAdjacent: MultiSet[Place[_]], outAdjacent: MultiSet[Place[_]]) =
+        (marking, state, input) ⇒ Task.delay {
+          val produced = outAdjacent.map {
+            case (place, weight) ⇒ place -> produceTokens(place, weight.toInt)
+          }.toMarking
 
-        (marking, state, input) ⇒
-          {
-            val produced = outAdjacent.map {
-              case (place, weight) ⇒ place -> produceTokens(place, weight.toInt)
-            }.toMarking
-
-            Future.successful(produced -> constant)
-          }
-      }
+          produced -> constant
+        }
 
       def produceTokens[C](place: Place[C], count: Int): MultiSet[C] = MultiSet.empty[C] + (constant.asInstanceOf[C] -> count)
 
@@ -49,10 +47,8 @@ package object dsl {
 
   def nullTransition[S](id: Long, label: String, automated: Boolean = false) = constantTransition[Unit, Unit, S](id, label, automated, ())
 
-  def process[S](params: Arc*)(implicit ec: ExecutionContext): ExecutablePetriNet[S] = {
-    val petriNet = new ScalaGraphPetriNet(Graph(params: _*)) with ColoredTokenGame with TransitionExecutor[S] {
-      override lazy implicit val executionContext = ec
-    }
+  def process[S](params: Arc*): ExecutablePetriNet[S] = {
+    val petriNet = new ScalaGraphPetriNet(Graph(params: _*)) with ColoredTokenGame with TransitionExecutor[S]
 
     requireUniqueElements(petriNet.places.toSeq.map(_.id), "Place identifier")
     requireUniqueElements(petriNet.transitions.toSeq.map(_.id), "Transition identifier")
