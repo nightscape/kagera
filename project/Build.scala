@@ -42,7 +42,6 @@ object Build extends Build {
         scalaGraph,
         catsCore,
         fs2Core,
-        shapeless,
         scalatest % "test"))
 
   lazy val visualization = Project("visualization", file("visualization"))

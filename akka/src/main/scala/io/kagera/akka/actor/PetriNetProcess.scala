@@ -80,7 +80,7 @@ class PetriNetProcess[S](override val process: ExecutablePetriNet[S]) extends Pe
         case Some(transition) ⇒
           fireTransition(transition, input)(instance) match {
             case (_, Right(notEnabledReason)) ⇒
-              sender() ! TransitionNotEnabled(transition, notEnabledReason)
+              sender() ! TransitionNotEnabled(transition.id, notEnabledReason)
             case (newState, Left(job)) ⇒
               executeJob(job, sender())
               context become running(newState)

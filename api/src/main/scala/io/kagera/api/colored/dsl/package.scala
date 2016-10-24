@@ -12,13 +12,13 @@ import scalax.collection.edge.WLDiEdge
 
 /**
  *  TODO:
-  *
-  * This is not much of a DSL yet.
-  *
-  * Insight:
-  *
-  * Since each transition is different in what kind of in/out places & edges it can take we should probably not
-  * create a general connectivity DSL based on the base trait Transition.
+ *
+ * This is not much of a DSL yet.
+ *
+ * Insight:
+ *
+ * Since each transition is different in what kind of in/out places & edges it can take we should probably not
+ * create a general connectivity DSL based on the base trait Transition.
  *
  */
 package object dsl {

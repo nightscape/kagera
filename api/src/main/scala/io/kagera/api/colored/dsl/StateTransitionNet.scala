@@ -3,7 +3,7 @@ package io.kagera.api.colored.dsl
 import fs2.Task
 import io.kagera.api.colored.ExceptionStrategy.BlockSelf
 import io.kagera.api.colored.transitions.UncoloredTransition
-import io.kagera.api.colored.{AbstractTransition, Marking, Transition, _}
+import io.kagera.api.colored.{ AbstractTransition, Marking, Transition, _ }
 
 import scala.concurrent.duration.Duration
 import scala.util.Random
