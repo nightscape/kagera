@@ -16,6 +16,8 @@ import scala.language.existentials
 object PetriNetInstance {
 
   def props[S](process: ExecutablePetriNet[S]): Props = Props(new PetriNetInstance[S](process))
+
+  def petriNetInstancePersistenceId(processId: String): String = s"process-$processId"
 }
 
 /**
@@ -24,9 +26,11 @@ object PetriNetInstance {
 class PetriNetInstance[S](override val process: ExecutablePetriNet[S]) extends PersistentActor
     with ActorLogging with PetriNetInstanceRecovery[S] {
 
+  import PetriNetInstance._
+
   val processId = context.self.path.name
 
-  override def persistenceId: String = s"process-$processId"
+  override def persistenceId: String = petriNetInstancePersistenceId(processId)
 
   import context.dispatcher
 
