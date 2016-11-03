@@ -62,6 +62,8 @@ object Build extends Build {
         akkaActor,
         akkaPersistence,
         akkaSlf4j,
+        akkaStream,
+        akkaQuery,
         scalaGraph,
         akkaTestkit % "test",
         scalatest   % "test")
