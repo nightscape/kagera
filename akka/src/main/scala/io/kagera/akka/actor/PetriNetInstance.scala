@@ -55,7 +55,7 @@ class PetriNetInstance[S](override val process: ExecutablePetriNet[S]) extends P
 
     case e @ TransitionFailedEvent(jobId, transitionId, timeStarted, timeFailed, consume, input, reason, strategy @ RetryWithDelay(delay)) ⇒
 
-      val updatedInstance = applyEvent(e)(instance)._1
+      val updatedInstance = updateInstance(instance)(e)
 
       log.warning(s"Transition '${transitionId}' failed: {}", reason)
 
@@ -68,7 +68,7 @@ class PetriNetInstance[S](override val process: ExecutablePetriNet[S]) extends P
 
     case e @ TransitionFailedEvent(jobId, transitionId, timeStarted, timeFailed, consume, input, reason, strategy) ⇒
 
-      val updatedInstance = applyEvent(e)(instance)._1
+      val updatedInstance = updateInstance(instance)(e)
 
       log.warning(s"Transition '${transitionId}' failed: {}", reason)
       sender() ! TransitionFailed(transitionId, consume, input, reason, strategy)

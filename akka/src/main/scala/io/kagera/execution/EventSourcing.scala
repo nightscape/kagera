@@ -1,5 +1,6 @@
 package io.kagera.execution
 
+import cats.data.State
 import io.kagera.api._
 import io.kagera.api.colored.{ ExceptionStrategy, Marking, Transition }
 
@@ -40,24 +41,24 @@ object EventSourcing {
     marking: Marking,
     state: S) extends Event
 
-  def applyEvent[S](e: Event): InstanceState[S, Unit] = state ⇒ e match {
-    case e: InitializedEvent[_] ⇒
-      (Instance[S](state.process, 1, e.marking, e.state.asInstanceOf[S], Map.empty), ())
-    case e: TransitionFiredEvent ⇒
-      val t = state.process.transitions.getById(e.transitionId).asInstanceOf[Transition[_, Any, S]]
-      val newState = t.updateState(state.state)(e.out)
-      val updatedInstance = state.copy(
-        sequenceNr = state.sequenceNr + 1,
-        marking = state.marking -- e.consumed ++ e.produced,
-        state = newState,
-        jobs = state.jobs - e.jobId
-      )
-      (updatedInstance, ())
-    case e: TransitionFailedEvent ⇒
-      val job = state.jobs(e.jobId)
-      val failureCount = job.failureCount + 1
-      val updatedJob = job.copy(failure = Some(ExceptionState(e.transitionId, failureCount, e.failureReason, e.exceptionStrategy)))
-      val updatedInstance = state.copy(jobs = state.jobs + (job.id -> updatedJob))
-      (updatedInstance, ())
+  def applyEvent[S](e: Event): State[Instance[S], Unit] = State.modify { instance ⇒
+    e match {
+      case e: InitializedEvent[_] ⇒
+        Instance[S](instance.process, 1, e.marking, e.state.asInstanceOf[S], Map.empty)
+      case e: TransitionFiredEvent ⇒
+        val t = instance.process.transitions.getById(e.transitionId).asInstanceOf[Transition[_, Any, S]]
+        val newState = t.updateState(instance.state)(e.out)
+        instance.copy(
+          sequenceNr = instance.sequenceNr + 1,
+          marking = instance.marking -- e.consumed ++ e.produced,
+          state = newState,
+          jobs = instance.jobs - e.jobId
+        )
+      case e: TransitionFailedEvent ⇒
+        val job = instance.jobs(e.jobId)
+        val failureCount = job.failureCount + 1
+        val updatedJob = job.copy(failure = Some(ExceptionState(e.transitionId, failureCount, e.failureReason, e.exceptionStrategy)))
+        instance.copy(jobs = instance.jobs + (job.id -> updatedJob))
+    }
   }
 }
