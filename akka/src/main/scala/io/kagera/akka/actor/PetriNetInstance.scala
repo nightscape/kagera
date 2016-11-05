@@ -30,8 +30,6 @@ class PetriNetInstance[S](override val process: ExecutablePetriNet[S]) extends P
 
   import context.dispatcher
 
-  def processState(instance: Instance[S]): ProcessState[S] = ProcessState[S](instance.sequenceNr, instance.marking, instance.state)
-
   override def receiveCommand = uninitialized
 
   def uninitialized: Receive = {
@@ -44,7 +42,7 @@ class PetriNetInstance[S](override val process: ExecutablePetriNet[S]) extends P
 
   def running(instance: Instance[S]): Receive = {
     case GetState ⇒
-      sender() ! processState(instance)
+      sender() ! ProcessState[S](instance.sequenceNr, instance.marking, instance.state)
 
     case e @ TransitionFiredEvent(jobId, transitionId, timeStarted, timeCompleted, consumed, produced, output) ⇒
       persistEvent(instance, e) { (updateInstance, e) ⇒
