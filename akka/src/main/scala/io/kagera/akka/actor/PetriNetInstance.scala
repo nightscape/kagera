@@ -15,14 +15,17 @@ import scala.language.existentials
 
 object PetriNetInstance {
 
-  def props[S](process: ExecutablePetriNet[S]): Props = Props(new PetriNetInstance[S](process))
+  def props[S](topology: ExecutablePetriNet[S]): Props = Props(new PetriNetInstance[S](topology, new TransitionExecutorImpl[S](topology)))
 }
 
 /**
  * This actor is responsible for maintaining the state of a single petri net instance.
  */
-class PetriNetInstance[S](override val process: ExecutablePetriNet[S]) extends PersistentActor
-    with ActorLogging with PetriNetInstanceRecovery[S] {
+class PetriNetInstance[S](
+  override val topology: ExecutablePetriNet[S],
+  executor: TransitionExecutor[S]) extends PersistentActor
+    with ActorLogging
+    with PetriNetInstanceRecovery[S] {
 
   val processId = context.self.path.name
 
@@ -34,7 +37,7 @@ class PetriNetInstance[S](override val process: ExecutablePetriNet[S]) extends P
 
   def uninitialized: Receive = {
     case Initialize(marking, state) ⇒
-      persistEvent(Instance.uninitialized(process), InitializedEvent(marking, state.asInstanceOf[S])) { (updatedState, e) ⇒
+      persistEvent(Instance.uninitialized(topology), InitializedEvent(marking, state.asInstanceOf[S])) { (updatedState, e) ⇒
         executeAllEnabledTransitions(updatedState)
         sender() ! Initialized(marking, state)
       }
@@ -97,7 +100,7 @@ class PetriNetInstance[S](override val process: ExecutablePetriNet[S]) extends P
   // TODO: best to use another thread pool
   implicit val s: Strategy = Strategy.fromExecutionContext(context.dispatcher)
 
-  def executeJob[E](job: Job[S, E], originalSender: ActorRef) = runJob(job).unsafeRunAsyncFuture().pipeTo(context.self)(originalSender)
+  def executeJob[E](job: Job[S, E], originalSender: ActorRef) = runJob(job, executor).unsafeRunAsyncFuture().pipeTo(context.self)(originalSender)
 
   override def onRecoveryCompleted(instance: Instance[S]) = executeAllEnabledTransitions(instance)
 }

@@ -10,8 +10,6 @@ import scala.collection.Set
 
 package object execution {
 
-  type InstanceState[S, T] = Instance[S] ⇒ (Instance[S], T)
-
   /**
    * Fires a specific transition with input, computes the marking it should consume
    */
@@ -34,7 +32,7 @@ package object execution {
   /**
    * Creates a job for a specific input & marking. Does not do any validation on the parameters
    */
-  def createJob[E, S](transition: Transition[Any, E, S], consume: Marking, input: Any): InstanceState[S, Job[S, E]] = s ⇒ {
+  def createJob[E, S](transition: Transition[Any, E, S], consume: Marking, input: Any): Instance[S] ⇒ (Instance[S], Job[S, E]) = s ⇒ {
     val job = Job[S, E](s.nextJobId(), s.process, s.state, transition, consume, input)
     val newState = s.copy(jobs = s.jobs + (job.id -> job))
     (newState, job)
@@ -73,10 +71,10 @@ package object execution {
   /**
    * Executes a job returning a TransitionEvent
    */
-  def runJob[S, E](job: Job[S, E])(implicit S: Strategy): Task[TransitionEvent] = {
+  def runJob[S, E](job: Job[S, E], executor: TransitionExecutor[S])(implicit S: Strategy): Task[TransitionEvent] = {
     val startTime = System.currentTimeMillis()
 
-    job.process.fireTransition(job.transition)(job.consume, job.processState, job.input).map {
+    executor.fireTransition(job.transition)(job.consume, job.processState, job.input).map {
       case (produced, out) ⇒
         TransitionFiredEvent(job.id, job.transition.id, startTime, System.currentTimeMillis(), job.consume, produced, out)
     }.handle {
