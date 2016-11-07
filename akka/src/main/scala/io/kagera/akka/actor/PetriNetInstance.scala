@@ -45,7 +45,7 @@ class PetriNetInstance[S](
 
   def running(instance: Instance[S]): Receive = {
     case GetState ⇒
-      sender() ! ProcessState[S](instance.sequenceNr, instance.marking, instance.state)
+      sender() ! InstanceState[S](instance.sequenceNr, instance.marking, instance.state)
 
     case e @ TransitionFiredEvent(jobId, transitionId, timeStarted, timeCompleted, consumed, produced, output) ⇒
       persistEvent(instance, e) { (updateInstance, e) ⇒
