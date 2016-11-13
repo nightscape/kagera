@@ -18,10 +18,10 @@ case class Instance[S](
     jobs: Map[Long, Job[S, _]]) {
 
   // The marking that is already used by running jobs
-  lazy val reservedMarking: Marking = jobs.map { case (id, job) ⇒ job.consume }.reduceOption(_ ++ _).getOrElse(Marking.empty)
+  lazy val reservedMarking: Marking = jobs.map { case (id, job) ⇒ job.consume }.reduceOption(_ |+| _).getOrElse(Marking.empty)
 
   // The marking that is available for new jobs
-  lazy val availableMarking: Marking = marking -- reservedMarking
+  lazy val availableMarking: Marking = marking |-| reservedMarking
 
   def failedJobs: Iterable[ExceptionState] = jobs.values.map(_.failure).flatten
 
