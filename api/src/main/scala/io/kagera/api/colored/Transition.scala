@@ -49,13 +49,6 @@ trait Transition[Input, Output, State] {
   val maximumOperationTime: Duration
 
   /**
-   * A duration, specifying the delay that the transition, after becoming enabled, may fire.
-   *
-   * @return
-   */
-  def delay: FiniteDuration = Duration.Zero
-
-  /**
    * Indicates a strategy to use when dealing with exceptions.
    *
    * @return
@@ -80,7 +73,7 @@ trait Transition[Input, Output, State] {
    * @param outAdjacent
    * @return
    */
-  def apply(inAdjacent: MultiSet[Place[_]], outAdjacent: MultiSet[Place[_]]): (Marking, State, Input) ⇒ Task[(Marking, Output)]
+  def apply(inAdjacent: MultiSet[Place[_]], outAdjacent: MultiSet[Place[_]]): TransitionFunction[Input, Output, State]
 
   /**
    * The state transition function:
