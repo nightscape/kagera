@@ -17,7 +17,7 @@ import scala.language.existentials
 object PetriNetInstance {
 
   def petriNetInstancePersistenceId(processId: String): String = s"process-$processId"
-  
+
   def props[S](topology: ExecutablePetriNet[S]): Props = Props(new PetriNetInstance[S](topology, new TransitionExecutorImpl[S](topology)))
 }
 
