@@ -226,16 +226,16 @@ class PetriNetInstanceSpec extends TestKit(ActorSystem("PetriNetInstanceSpec", P
       // assert that the actor is in the initial state
       actor ! GetState
 
-      expectMsg(InstanceState[Set[Int]](1, initialMarking, Set.empty))
+      expectMsg(InstanceState[Set[Int]](1, initialMarking, Set.empty, Map.empty))
 
       // fire the first transition (t1) manually
       actor ! FireTransition(t1)
 
       // expect the next marking: p2 -> 1
-      expectMsgPF() { case TransitionFired(t1.id, _, _, result, _) if result == Marking(p2 -> 1) ⇒ }
+      expectMsgPF() { case TransitionFired(t1.id, _, _, result) if result.marking == Marking(p2 -> 1) ⇒ }
 
       // since t2 fires automatically we also expect the next marking: p3 -> 1
-      expectMsgPF() { case TransitionFired(t2.id, _, _, result, _) if result == Marking(p3 -> 1) ⇒ }
+      expectMsgPF() { case TransitionFired(t2.id, _, _, result) if result.marking == Marking(p3 -> 1) ⇒ }
 
       // terminate the actor
       watch(actor)
@@ -248,7 +248,7 @@ class PetriNetInstanceSpec extends TestKit(ActorSystem("PetriNetInstanceSpec", P
       newActor ! GetState
 
       // assert that the marking is the same as before termination
-      expectMsg(InstanceState[Set[Int]](3, Marking(p3 -> 1), Set(1, 2)))
+      expectMsg(InstanceState[Set[Int]](3, Marking(p3 -> 1), Set(1, 2), Map.empty))
     }
 
     "fire automatic transitions in parallel when possible" in new StateTransitionNet[Unit, Unit] {
@@ -281,7 +281,7 @@ class PetriNetInstanceSpec extends TestKit(ActorSystem("PetriNetInstanceSpec", P
       // fire the first transition manually
       actor ! FireTransition(t1)
 
-      expectMsgPF() { case TransitionFired(t1.id, _, _, result, _) ⇒ }
+      expectMsgPF() { case TransitionFired(t1.id, _, _, _) ⇒ }
 
       import org.scalatest.concurrent.Timeouts._
 
@@ -289,8 +289,8 @@ class PetriNetInstanceSpec extends TestKit(ActorSystem("PetriNetInstanceSpec", P
 
         // expect that the two subsequent transitions are fired automatically and in parallel (in any order)
         expectMsgInAnyOrderPF(
-          { case TransitionFired(t2.id, _, _, _, _) ⇒ },
-          { case TransitionFired(t3.id, _, _, _, _) ⇒ }
+          { case TransitionFired(t2.id, _, _, _) ⇒ },
+          { case TransitionFired(t3.id, _, _, _) ⇒ }
         )
       }
     }
