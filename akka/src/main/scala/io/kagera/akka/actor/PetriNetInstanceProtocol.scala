@@ -52,7 +52,7 @@ object PetriNetInstanceProtocol {
    */
   case class Initialized[S](marking: Marking, state: S) extends Response
 
-  sealed trait TransitionResult extends Response
+  sealed trait TransitionResponse extends Response
 
   /**
    *  Response indicating that a transition has fired successfully
@@ -61,7 +61,7 @@ object PetriNetInstanceProtocol {
     transitionId: Long,
     consumed: Marking,
     produced: Marking,
-    result: InstanceState[S]) extends TransitionResult
+    result: InstanceState[S]) extends TransitionResponse
 
   /**
    *  Response indicating that a transition has failed.
@@ -71,12 +71,12 @@ object PetriNetInstanceProtocol {
     consume: Marking,
     input: Any,
     reason: String,
-    strategy: ExceptionStrategy) extends TransitionResult
+    strategy: ExceptionStrategy) extends TransitionResponse
 
   /**
    * Response indicating that the transition could not be fired because it is not enabled.
    */
-  case class TransitionNotEnabled(transitionId: Long, reason: String) extends TransitionResult
+  case class TransitionNotEnabled(transitionId: Long, reason: String) extends TransitionResponse
 
   /**
    * The exception state of a transition.
@@ -86,5 +86,8 @@ object PetriNetInstanceProtocol {
   /**
    * Response containing the state of the process.
    */
-  case class InstanceState[S](sequenceNr: BigInt, marking: Marking, state: S, failures: Map[Long, ExceptionState])
+  case class InstanceState[S](sequenceNr: BigInt, marking: Marking, state: S, failures: Map[Long, ExceptionState]) {
+
+    def hasFailed(transitionId: Long): Boolean = failures.contains(transitionId)
+  }
 }
