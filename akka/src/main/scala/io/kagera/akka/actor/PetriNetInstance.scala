@@ -79,7 +79,7 @@ class PetriNetInstance[S](
 
       strategy match {
         case RetryWithDelay(delay) ⇒
-          log.warning(s"Scheduling a retry of transition ${transitionId} in $delay milliseconds")
+          log.warning(s"Scheduling a retry of transition '${topology.transitions.getById(transitionId)}' in $delay milliseconds")
           val originalSender = sender()
           system.scheduler.scheduleOnce(delay milliseconds) { executeJob(updatedInstance.jobs(jobId), originalSender) }
         case _ ⇒
