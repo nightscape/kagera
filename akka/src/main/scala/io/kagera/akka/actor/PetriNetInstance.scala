@@ -55,6 +55,8 @@ class PetriNetInstance[S](
         executeAllEnabledTransitions(updatedState)
         sender() ! Initialized(marking, state)
       }
+    case msg: Command ⇒
+      sender() ! IllegalCommand("Only accepting Initialize commands in 'uninitialized' state")
   }
 
   def running(instance: Instance[S]): Receive = {
@@ -99,6 +101,8 @@ class PetriNetInstance[S](
           log.warning(reason)
           sender() ! TransitionNotEnabled(id, reason)
       }
+    case msg: Initialize[_] ⇒
+      sender() ! IllegalCommand("Already initialized")
   }
 
   def executeAllEnabledTransitions(instance: Instance[S]) = {
