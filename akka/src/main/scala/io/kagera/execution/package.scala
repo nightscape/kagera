@@ -35,7 +35,7 @@ package object execution {
    * Creates a job for a specific input & marking. Does not do any validation on the parameters
    */
   def createJob[E, S](transition: Transition[Any, E, S], consume: Marking, input: Any): Instance[S] ⇒ (Instance[S], Job[S, E]) = s ⇒ {
-    val job = Job[S, E](s.nextJobId(), s.process, s.state, transition, consume, input)
+    val job = Job[S, E](s.nextJobId(), s.state, transition, consume, input)
     val newState = s.copy(jobs = s.jobs + (job.id -> job))
     (newState, job)
   }
@@ -48,7 +48,7 @@ package object execution {
       case (t, markings) ⇒ t.isAutomated && !instance.isBlockedReason(t.id).isDefined
     }.map {
       case (t, markings) ⇒
-        val job = Job[S, Any](instance.nextJobId(), instance.process, instance.state, t.asInstanceOf[Transition[Any, Any, S]], markings.head, ())
+        val job = Job[S, Any](instance.nextJobId(), instance.state, t.asInstanceOf[Transition[Any, Any, S]], markings.head, ())
         (instance.copy(jobs = instance.jobs + (job.id -> job)), Some(job))
     }.getOrElse((instance, None))
   }
@@ -78,7 +78,7 @@ package object execution {
 
     executor.fireTransition(job.transition)(job.consume, job.processState, job.input).map {
       case (produced, out) ⇒
-        TransitionFiredEvent(job.id, job.transition.id, startTime, System.currentTimeMillis(), job.consume, produced, out)
+        TransitionFiredEvent(job.id, job.transition.id, startTime, System.currentTimeMillis(), job.consume, produced, Some(out))
     }.handle {
       case e: Throwable ⇒
         val failureCount = job.failureCount + 1
@@ -88,7 +88,7 @@ package object execution {
         e.printStackTrace(new PrintWriter(sw))
         val stackTraceString = sw.toString
 
-        TransitionFailedEvent(job.id, job.transition.id, startTime, System.currentTimeMillis(), job.consume, job.input, stackTraceString, failureStrategy)
+        TransitionFailedEvent(job.id, job.transition.id, startTime, System.currentTimeMillis(), job.consume, Some(job.input), stackTraceString, failureStrategy)
     }.async
   }
 }
