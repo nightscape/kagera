@@ -38,20 +38,11 @@ object PetriNetInstanceSpec {
       |logging.root.level = WARN
     """.stripMargin)
 
-  sealed trait Event
-  case class Added(n: Int) extends Event
-  case class Removed(n: Int) extends Event
-
   def createPetriNetActor[S](petriNet: ExecutablePetriNet[S], processId: String = UUID.randomUUID().toString)(implicit system: ActorSystem) =
     system.actorOf(PetriNetInstance.props(petriNet), processId)
 }
 
-class PetriNetInstanceSpec extends TestKit(ActorSystem("PetriNetInstanceSpec", PetriNetInstanceSpec.config))
-    with WordSpecLike
-    with ImplicitSender
-    with BeforeAndAfterAll {
-
-  override def afterAll = system.shutdown()
+class PetriNetInstanceSpec extends AkkaTestBase {
 
   def expectMsgInAnyOrderPF[Out](pfs: PartialFunction[Any, Out]*): Unit = {
     if (pfs.nonEmpty) {
@@ -77,14 +68,12 @@ class PetriNetInstanceSpec extends TestKit(ActorSystem("PetriNetInstanceSpec", P
 
   "A persistent petri net actor" should {
 
-    "Respond with an Initialized response after being initialized by an Initialized command" in new SequenceNet[Set[Int], Event] {
+    "Respond with an Initialized response after being initialized by an Initialized command" in new TestSequenceNet {
 
-      override val eventSourcing = integerSetEventSource
-
-      override def sequence = {
-        case 1 ⇒ transition()(_ ⇒ Added(1))
-        case 2 ⇒ transition()(_ ⇒ Added(2))
-      }
+      override val sequence = Seq(
+        transition()(_ ⇒ Added(1)),
+        transition()(_ ⇒ Added(2))
+      )
 
       val actor = createPetriNetActor[Set[Int]](petriNet)
 
@@ -93,14 +82,12 @@ class PetriNetInstanceSpec extends TestKit(ActorSystem("PetriNetInstanceSpec", P
       expectMsg(Initialized(initialMarking, Set(1, 2, 3)))
     }
 
-    "Afer being initialized respond with an InstanceState message on receiving a GetState command" in new SequenceNet[Set[Int], Event] {
+    "Afer being initialized respond with an InstanceState message on receiving a GetState command" in new TestSequenceNet {
 
-      override val eventSourcing = integerSetEventSource
-
-      override def sequence = {
-        case 1 ⇒ transition()(_ ⇒ Added(1))
-        case 2 ⇒ transition()(_ ⇒ Added(2))
-      }
+      override val sequence = Seq(
+        transition()(_ ⇒ Added(1)),
+        transition()(_ ⇒ Added(2))
+      )
 
       val actor = createPetriNetActor[Set[Int]](petriNet)
 
@@ -112,14 +99,12 @@ class PetriNetInstanceSpec extends TestKit(ActorSystem("PetriNetInstanceSpec", P
 
     }
 
-    "Respond with a TransitionFailed message if a transition failed to fire" in new SequenceNet[Set[Int], Event] {
+    "Respond with a TransitionFailed message if a transition failed to fire" in new TestSequenceNet {
 
-      override val eventSourcing = integerSetEventSource
-
-      override def sequence = {
-        case 1 ⇒ transition()(_ ⇒ throw new RuntimeException("t1 failed!"))
-        case 2 ⇒ transition()(_ ⇒ throw new RuntimeException("t2 failed!"))
-      }
+      override val sequence = Seq(
+        transition()(_ ⇒ throw new RuntimeException("t1 failed!")),
+        transition()(_ ⇒ throw new RuntimeException("t2 failed!"))
+      )
 
       val actor = createPetriNetActor[Set[Int]](petriNet)
 
@@ -131,14 +116,12 @@ class PetriNetInstanceSpec extends TestKit(ActorSystem("PetriNetInstanceSpec", P
       expectMsgClass(classOf[TransitionFailed])
     }
 
-    "Respond with a TransitionNotEnabled message if a transition is not enabled because of a previous failure" in new SequenceNet[Set[Int], Event] {
+    "Respond with a TransitionNotEnabled message if a transition is not enabled because of a previous failure" in new TestSequenceNet {
 
-      override val eventSourcing = integerSetEventSource
-
-      override def sequence = {
-        case 1 ⇒ transition()(_ ⇒ throw new RuntimeException("t1 failed!"))
-        case 2 ⇒ transition()(_ ⇒ throw new RuntimeException("t2 failed!"))
-      }
+      override val sequence = Seq(
+        transition()(_ ⇒ throw new RuntimeException("t1 failed!")),
+        transition()(_ ⇒ Added(2))
+      )
 
       val actor = createPetriNetActor[Set[Int]](petriNet)
 
@@ -155,14 +138,12 @@ class PetriNetInstanceSpec extends TestKit(ActorSystem("PetriNetInstanceSpec", P
       expectMsgPF() { case TransitionNotEnabled(1, msg) ⇒ }
     }
 
-    "Respond with a TransitionNotEnabled message if a transition is not enabled because of not enough consumable tokens" in new SequenceNet[Set[Int], Event] {
+    "Respond with a TransitionNotEnabled message if a transition is not enabled because of not enough consumable tokens" in new TestSequenceNet {
 
-      override val eventSourcing = integerSetEventSource
-
-      override def sequence = {
-        case 1 ⇒ transition()(_ ⇒ Added(1))
-        case 2 ⇒ transition()(_ ⇒ Added(2))
-      }
+      override val sequence = Seq(
+        transition()(_ ⇒ Added(1)),
+        transition()(_ ⇒ Added(2))
+      )
 
       val actor = createPetriNetActor[Set[Int]](petriNet)
 
@@ -176,19 +157,17 @@ class PetriNetInstanceSpec extends TestKit(ActorSystem("PetriNetInstanceSpec", P
       expectMsgPF() { case TransitionNotEnabled(2, _) ⇒ }
     }
 
-    "Retry to execute a transition with a delay when the exception strategy indicates so" in new SequenceNet[Set[Int], Event] {
-
-      override val eventSourcing = integerSetEventSource
+    "Retry to execute a transition with a delay when the exception strategy indicates so" in new TestSequenceNet {
 
       val retryHandler: TransitionExceptionHandler = {
         case (e, n) if n < 3 ⇒ RetryWithDelay((10 * Math.pow(2, n)).toLong)
         case _               ⇒ Fatal
       }
 
-      override def sequence = {
-        case 1 ⇒ transition(exceptionHandler = retryHandler) { _ ⇒ { throw new RuntimeException("t1 failed") } }
-        case 2 ⇒ transition() { _ ⇒ Added(2) }
-      }
+      override val sequence = Seq(
+        transition(exceptionHandler = retryHandler) { _ ⇒ throw new RuntimeException("t1 failed") },
+        transition() { _ ⇒ Added(2) }
+      )
 
       val id = UUID.randomUUID()
 
@@ -211,14 +190,12 @@ class PetriNetInstanceSpec extends TestKit(ActorSystem("PetriNetInstanceSpec", P
       val msg = expectMsgClass(classOf[TransitionNotEnabled])
     }
 
-    "Be able to restore it's state after termination" in new SequenceNet[Set[Int], Event] {
+    "Be able to restore it's state after termination" in new TestSequenceNet {
 
-      override val eventSourcing = integerSetEventSource
-
-      override def sequence = {
-        case 1 ⇒ transition()(_ ⇒ Added(1))
-        case 2 ⇒ transition(automated = true)(_ ⇒ Added(2))
-      }
+      override val sequence = Seq(
+        transition()(_ ⇒ Added(1)),
+        transition(automated = true)(_ ⇒ Added(2))
+      )
 
       val actorName = java.util.UUID.randomUUID().toString
 
