@@ -15,11 +15,10 @@ import org.scalatest.Matchers._
 import org.scalatest.WordSpecLike
 import org.scalatest.Inside._
 
-import scala.collection.immutable.Map
 import scala.concurrent.duration._
 import scala.concurrent.{ Await, ExecutionContext }
 
-class QuerySpec extends TestKit(ActorSystem("QuerySpec", PetriNetInstanceSpec.config))
+class QuerySpec extends TestKit(ActorSystem("QuerySpec", AkkaTestBase.defaultTestConfig))
     with WordSpecLike with ImplicitSender {
 
   val timeOut: Duration = 2 seconds
