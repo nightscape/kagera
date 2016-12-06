@@ -1,18 +1,18 @@
 package io.kagera.akka.actor
 
 import akka.NotUsed
-import akka.actor.{Actor, ActorRef, ActorSystem, Props}
+import akka.actor.{ Actor, ActorRef, ActorSystem, Props }
 import akka.pattern.ask
-import akka.stream.scaladsl.{Sink, Source, SourceQueueWithComplete}
-import akka.stream.{Materializer, OverflowStrategy}
+import akka.stream.scaladsl.{ Sink, Source, SourceQueueWithComplete }
+import akka.stream.{ Materializer, OverflowStrategy }
 import akka.util.Timeout
 import cats.data.Xor
 import io.kagera.akka.actor.PetriNetInstanceProtocol._
 import io.kagera.api.colored.ExceptionStrategy.RetryWithDelay
-import io.kagera.api.colored.{Transition, _}
+import io.kagera.api.colored.{ Transition, _ }
 
 import scala.collection.immutable.Seq
-import scala.concurrent.{Await, Future}
+import scala.concurrent.{ Await, Future }
 
 /**
  * Contains some methods to interact with a petri net instance actor.
@@ -55,7 +55,7 @@ object PetriNetInstanceApi {
     import actorSystem.dispatcher
 
     def responseSource[E](msg: Any, takeWhile: Any ⇒ Boolean): Source[E, NotUsed] = {
-      Source.queue[E](100, OverflowStrategy.fail).mapMaterializedValue { queue =>
+      Source.queue[E](100, OverflowStrategy.fail).mapMaterializedValue { queue ⇒
         val sender = actorSystem.actorOf(Props(new QueuePushingActor[E](queue, takeWhile)))
         actor.tell(msg, sender)
         NotUsed.getInstance()
