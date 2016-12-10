@@ -1,9 +1,10 @@
 package io.kagera.akka.actor
 
-import akka.actor.{ ActorLogging, ActorRef, Props }
+import akka.actor.{ ActorLogging, ActorRef, PoisonPill, Props }
 import akka.pattern.pipe
 import akka.persistence.PersistentActor
 import fs2.Strategy
+import io.kagera.akka.actor.PetriNetInstance.Settings
 import io.kagera.akka.actor.PetriNetInstanceProtocol._
 import io.kagera.api.colored.ExceptionStrategy.RetryWithDelay
 import io.kagera.api._
@@ -16,6 +17,15 @@ import scala.language.existentials
 
 object PetriNetInstance {
 
+  case class Settings(
+    evaluationStrategy: Strategy,
+    postCompleteTTL: Option[FiniteDuration])
+
+  val defaultSettings: Settings = Settings(
+    evaluationStrategy = Strategy.fromCachedDaemonPool("Kagera.CachedThreadPool"),
+    postCompleteTTL = Some(5 minutes)
+  )
+
   def petriNetInstancePersistenceId(processId: String): String = s"process-$processId"
 
   def instanceState[S](instance: Instance[S]): InstanceState[S] = {
@@ -26,7 +36,8 @@ object PetriNetInstance {
     InstanceState[S](instance.sequenceNr, instance.marking, instance.state, failures)
   }
 
-  def props[S](topology: ExecutablePetriNet[S]): Props = Props(new PetriNetInstance[S](topology, new TransitionExecutorImpl[S](topology)))
+  def props[S](topology: ExecutablePetriNet[S]): Props =
+    Props(new PetriNetInstance[S](topology, defaultSettings, new TransitionExecutorImpl[S](topology)))
 }
 
 /**
@@ -34,6 +45,7 @@ object PetriNetInstance {
  */
 class PetriNetInstance[S](
   override val topology: ExecutablePetriNet[S],
+  val settings: Settings,
   executor: TransitionExecutor[S]) extends PersistentActor
     with ActorLogging
     with PetriNetInstanceRecovery[S] {
@@ -108,15 +120,17 @@ class PetriNetInstance[S](
   def executeAllEnabledTransitions(instance: Instance[S]) = {
     fireAllEnabledTransitions.run(instance).value match {
       case (updatedInstance, jobs) ⇒
+
+        if (jobs.isEmpty && updatedInstance.jobs.isEmpty)
+          settings.postCompleteTTL.foreach(ttl ⇒ system.scheduler.scheduleOnce(ttl, context.self, PoisonPill))
+
         jobs.foreach(job ⇒ executeJob(job, sender()))
         context become running(updatedInstance)
     }
   }
 
-  // TODO: best to use another thread pool
-  implicit val s: Strategy = Strategy.fromExecutionContext(context.dispatcher)
-
-  def executeJob[E](job: Job[S, E], originalSender: ActorRef) = runJob(job, executor).unsafeRunAsyncFuture().pipeTo(context.self)(originalSender)
+  def executeJob[E](job: Job[S, E], originalSender: ActorRef) =
+    runJob(job, executor)(settings.evaluationStrategy).unsafeRunAsyncFuture().pipeTo(context.self)(originalSender)
 
   override def onRecoveryCompleted(instance: Instance[S]) = executeAllEnabledTransitions(instance)
 }
