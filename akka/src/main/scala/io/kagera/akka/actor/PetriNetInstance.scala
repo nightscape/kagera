@@ -1,13 +1,13 @@
 package io.kagera.akka.actor
 
-import akka.actor.{ ActorLogging, ActorRef, PoisonPill, Props }
+import akka.actor.{ ActorLogging, ActorRef, Props }
 import akka.pattern.pipe
 import akka.persistence.PersistentActor
 import fs2.Strategy
 import io.kagera.akka.actor.PetriNetInstance.Settings
 import io.kagera.akka.actor.PetriNetInstanceProtocol._
-import io.kagera.api.colored.ExceptionStrategy.RetryWithDelay
 import io.kagera.api._
+import io.kagera.api.colored.ExceptionStrategy.RetryWithDelay
 import io.kagera.api.colored._
 import io.kagera.execution.EventSourcing._
 import io.kagera.execution._
@@ -17,13 +17,16 @@ import scala.language.existentials
 
 object PetriNetInstance {
 
+  // private control message to stop the actor after a certain idle time.
+  private case class IdleStop(markingSeq: Long)
+
   case class Settings(
     evaluationStrategy: Strategy,
-    postCompleteTTL: Option[FiniteDuration])
+    idleTTL: Option[FiniteDuration])
 
   val defaultSettings: Settings = Settings(
     evaluationStrategy = Strategy.fromCachedDaemonPool("Kagera.CachedThreadPool"),
-    postCompleteTTL = Some(5 minutes)
+    idleTTL = None
   )
 
   def petriNetInstancePersistenceId(processId: String): String = s"process-$processId"
@@ -64,7 +67,7 @@ class PetriNetInstance[S](
     case msg @ Initialize(marking, state) ⇒
       log.debug(s"Received message: {}", msg)
       persistEvent(Instance.uninitialized(topology), InitializedEvent(marking, state.asInstanceOf[S])) { (updatedState, e) ⇒
-        executeAllEnabledTransitions(updatedState)
+        step(updatedState)
         sender() ! Initialized(marking, state)
       }
     case msg: Command ⇒
@@ -72,20 +75,23 @@ class PetriNetInstance[S](
   }
 
   def running(instance: Instance[S]): Receive = {
+    case IdleStop(n) if n == instance.sequenceNr && instance.jobs.isEmpty ⇒
+      log.info(s"Process was idle for '${settings.idleTTL}, stopping the actor")
+      context.stop(context.self)
     case GetState ⇒
       log.debug(s"Received message: GetState")
       sender() ! instanceState(instance)
 
     case e @ TransitionFiredEvent(jobId, transitionId, timeStarted, timeCompleted, consumed, produced, output) ⇒
       log.debug(s"Received message: {}", e)
+      log.debug(s"Transition '${topology.transitions.getById(transitionId)}' fired successfully")
 
       persistEvent(instance, e) { (updateInstance, e) ⇒
-        executeAllEnabledTransitions(updateInstance)
+        step(updateInstance)
         sender() ! TransitionFired[S](transitionId, e.consumed, e.produced, instanceState(updateInstance))
       }
 
     case e @ TransitionFailedEvent(jobId, transitionId, timeStarted, timeFailed, consume, input, reason, strategy) ⇒
-
       log.debug(s"Received message: {}", e)
       log.warning(s"Transition '${topology.transitions.getById(transitionId)}' failed with: {}", reason)
 
@@ -117,14 +123,13 @@ class PetriNetInstance[S](
       sender() ! IllegalCommand("Already initialized")
   }
 
-  def executeAllEnabledTransitions(instance: Instance[S]) = {
+  def step(instance: Instance[S]) = {
     fireAllEnabledTransitions.run(instance).value match {
       case (updatedInstance, jobs) ⇒
 
         if (jobs.isEmpty && updatedInstance.jobs.isEmpty)
-          settings.postCompleteTTL.foreach { ttl ⇒
-            log.debug("Process has completed, killing the actor in: {}", ttl)
-            system.scheduler.scheduleOnce(ttl, context.self, PoisonPill)
+          settings.idleTTL.foreach { ttl ⇒
+            system.scheduler.scheduleOnce(ttl, context.self, IdleStop(updatedInstance.sequenceNr))
           }
 
         jobs.foreach(job ⇒ executeJob(job, sender()))
@@ -133,7 +138,7 @@ class PetriNetInstance[S](
   }
 
   def executeJob[E](job: Job[S, E], originalSender: ActorRef) =
-    runJob(job, executor)(settings.evaluationStrategy).unsafeRunAsyncFuture().pipeTo(context.self)(originalSender)
+    runJobAsync(job, executor)(settings.evaluationStrategy).unsafeRunAsyncFuture().pipeTo(context.self)(originalSender)
 
-  override def onRecoveryCompleted(instance: Instance[S]) = executeAllEnabledTransitions(instance)
+  override def onRecoveryCompleted(instance: Instance[S]) = step(instance)
 }

@@ -109,7 +109,7 @@ object PetriNetInstanceProtocol {
    * Response containing the state of the process.
    */
   case class InstanceState[S](
-      sequenceNr: BigInt,
+      sequenceNr: Long,
       marking: Marking,
       state: S,
       failures: Map[Long, ExceptionState]) {
