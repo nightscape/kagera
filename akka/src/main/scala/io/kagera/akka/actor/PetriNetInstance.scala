@@ -19,12 +19,14 @@ object PetriNetInstance {
 
   case class Settings(
     evaluationStrategy: Strategy,
-    postCompleteTTL: Option[FiniteDuration])
+    idleTTL: Option[FiniteDuration])
 
   val defaultSettings: Settings = Settings(
     evaluationStrategy = Strategy.fromCachedDaemonPool("Kagera.CachedThreadPool"),
-    postCompleteTTL = Some(5 minutes)
+    idleTTL = Some(5 minutes)
   )
+
+  private case class IdleStop(seq: Long)
 
   def petriNetInstancePersistenceId(processId: String): String = s"process-$processId"
 
@@ -36,8 +38,8 @@ object PetriNetInstance {
     InstanceState[S](instance.sequenceNr, instance.marking, instance.state, failures)
   }
 
-  def props[S](topology: ExecutablePetriNet[S]): Props =
-    Props(new PetriNetInstance[S](topology, defaultSettings, new TransitionExecutorImpl[S](topology)))
+  def props[S](topology: ExecutablePetriNet[S], settings: Settings = defaultSettings): Props =
+    Props(new PetriNetInstance[S](topology, settings, new TransitionExecutorImpl[S](topology)))
 }
 
 /**
@@ -64,7 +66,7 @@ class PetriNetInstance[S](
     case msg @ Initialize(marking, state) ⇒
       log.debug(s"Received message: {}", msg)
       persistEvent(Instance.uninitialized(topology), InitializedEvent(marking, state.asInstanceOf[S])) { (updatedState, e) ⇒
-        executeAllEnabledTransitions(updatedState)
+        step(updatedState)
         sender() ! Initialized(marking, state)
       }
     case msg: Command ⇒
@@ -72,15 +74,19 @@ class PetriNetInstance[S](
   }
 
   def running(instance: Instance[S]): Receive = {
+    case IdleStop(n) if n == instance.sequenceNr && instance.activeJobs.isEmpty ⇒
+      context.stop(context.self)
+
     case GetState ⇒
       log.debug(s"Received message: GetState")
       sender() ! instanceState(instance)
 
     case e @ TransitionFiredEvent(jobId, transitionId, timeStarted, timeCompleted, consumed, produced, output) ⇒
       log.debug(s"Received message: {}", e)
+      log.debug(s"Transition '${topology.transitions.getById(transitionId)}' successfully fired")
 
       persistEvent(instance, e) { (updateInstance, e) ⇒
-        executeAllEnabledTransitions(updateInstance)
+        step(updateInstance)
         sender() ! TransitionFired[S](transitionId, e.consumed, e.produced, instanceState(updateInstance))
       }
 
@@ -117,13 +123,13 @@ class PetriNetInstance[S](
       sender() ! IllegalCommand("Already initialized")
   }
 
-  def executeAllEnabledTransitions(instance: Instance[S]) = {
+  def step(instance: Instance[S]) = {
     fireAllEnabledTransitions.run(instance).value match {
       case (updatedInstance, jobs) ⇒
 
-        if (jobs.isEmpty && updatedInstance.jobs.isEmpty)
-          settings.postCompleteTTL.foreach { ttl ⇒
-            log.debug("Process has completed, killing the actor in: {}", ttl)
+        if (jobs.isEmpty && updatedInstance.activeJobs.isEmpty)
+          settings.idleTTL.foreach { ttl ⇒
+            log.debug("Process has no running jobs, killing the actor in: {}", ttl)
             system.scheduler.scheduleOnce(ttl, context.self, PoisonPill)
           }
 
@@ -135,5 +141,5 @@ class PetriNetInstance[S](
   def executeJob[E](job: Job[S, E], originalSender: ActorRef) =
     runJob(job, executor)(settings.evaluationStrategy).unsafeRunAsyncFuture().pipeTo(context.self)(originalSender)
 
-  override def onRecoveryCompleted(instance: Instance[S]) = executeAllEnabledTransitions(instance)
+  override def onRecoveryCompleted(instance: Instance[S]) = step(instance)
 }
