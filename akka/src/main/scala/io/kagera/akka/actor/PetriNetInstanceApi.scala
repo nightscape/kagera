@@ -128,6 +128,6 @@ class PetriNetInstanceApi[S](topology: ExecutablePetriNet[S], actor: ActorRef)(i
     askSource[Any](actor, msg, takeWhileNotFailed(topology, waitForRetries)).map {
       case e: TransitionResponse ⇒ Right(e)
       case msg @ _               ⇒ Left(s"Received unexpected message: $msg")
-    }.takeWhile(_.isRight).map(_.asInstanceOf[Right[NotUsed, TransitionResponse]].value)
+    }.takeWhile(_.isRight).map(_.right.get)
   }
 }
