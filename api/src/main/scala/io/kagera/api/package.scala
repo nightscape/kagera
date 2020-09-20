@@ -18,12 +18,16 @@ package object api {
 
   implicit class LabeledFn[T : Labeled](seq: Iterable[T]) {
     def findByLabel(label: String): Option[T] = seq.find(e ⇒ implicitly[Labeled[T]].apply(e).value == label)
-    def getByLabel(label: String): T  = findByLabel(label).getOrElse { throw new IllegalStateException(s"No element found with label: $label") }
+    def getByLabel(label: String): T = findByLabel(label).getOrElse {
+      throw new IllegalStateException(s"No element found with label: $label")
+    }
   }
 
   implicit class IdFn[T : Identifiable](seq: Iterable[T]) {
     def findById(id: Long): Option[T] = seq.find(e ⇒ implicitly[Identifiable[T]].apply(e).value == id)
-    def getById(id: Long): T = findById(id).getOrElse { throw new IllegalStateException(s"No element found with id: $id") }
+    def getById(id: Long): T = findById(id).getOrElse {
+      throw new IllegalStateException(s"No element found with id: $id")
+    }
   }
 
   implicit class OptionOps(check: Boolean) {
@@ -46,9 +50,9 @@ package object api {
   type BiPartiteGraph[P, T, E[+X] <: EdgeLikeIn[X]] = Graph[Either[P, T], E]
 
   /**
-    * TODO; can we remove this wrapper? It seems only needed because we need to mix in other traits with PetriNet
-    * which cannot be done with Graph.apply
-    */
+   * TODO; can we remove this wrapper? It seems only needed because we need to mix in other traits with PetriNet
+   * which cannot be done with Graph.apply
+   */
   class ScalaGraphPetriNet[P, T](val innerGraph: BiPartiteGraph[P, T, WLDiEdge]) extends PetriNet[P, T] {
 
     override def inMarking(t: T): MultiSet[P] = innerGraph.inMarking(t)
@@ -71,12 +75,12 @@ package object api {
 
     def asPlace: A = node.value match {
       case Left(p) ⇒ p
-      case _       ⇒ throw new IllegalStateException(s"node $node is not a place!")
+      case _ ⇒ throw new IllegalStateException(s"node $node is not a place!")
     }
 
     def asTransition: B = node.value match {
       case Right(t) ⇒ t
-      case _        ⇒ throw new IllegalStateException(s"node $node is not a transition!")
+      case _ ⇒ throw new IllegalStateException(s"node $node is not a transition!")
     }
 
     def incomingEdgeB(b: B) = node.incoming.find(_.source.value == Right(b)).map(_.toOuter)
@@ -119,4 +123,3 @@ package object api {
     def transitions() = graph.nodes.collect { case n if n.isTransition ⇒ n.asTransition }
   }
 }
-

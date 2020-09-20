@@ -15,19 +15,23 @@ trait PetriNetQuery[S] {
 
   def readJournal: ReadJournal with CurrentEventsByPersistenceIdQuery
 
-  def eventsForInstance(instanceId: String, topology: ExecutablePetriNet[S])(implicit actorSystem: ActorSystem): (Source[(Instance[S], Event), NotUsed]) = {
+  def eventsForInstance(instanceId: String, topology: ExecutablePetriNet[S])(implicit
+    actorSystem: ActorSystem
+  ): (Source[(Instance[S], Event), NotUsed]) = {
 
     val serializer = new Serialization(new AkkaObjectSerializer(actorSystem))
 
     val persistentId = PetriNetInstance.petriNetInstancePersistenceId(instanceId)
     val src = readJournal.currentEventsByPersistenceId(persistentId, 0, Long.MaxValue)
 
-    src.scan[(Instance[S], Event)]((Instance.uninitialized(topology), null.asInstanceOf[Event])) {
-      case ((instance, prev), e) ⇒
-        val event = e.event.asInstanceOf[AnyRef]
-        val deserializedEvent = serializer.deserializeEvent(event)(instance)
-        val updatedInstance = applyEvent(deserializedEvent).runS(instance).value
-        (updatedInstance, deserializedEvent)
-    }.drop(1)
+    src
+      .scan[(Instance[S], Event)]((Instance.uninitialized(topology), null.asInstanceOf[Event])) {
+        case ((instance, prev), e) ⇒
+          val event = e.event.asInstanceOf[AnyRef]
+          val deserializedEvent = serializer.deserializeEvent(event)(instance)
+          val updatedInstance = applyEvent(deserializedEvent).runS(instance).value
+          (updatedInstance, deserializedEvent)
+      }
+      .drop(1)
   }
 }

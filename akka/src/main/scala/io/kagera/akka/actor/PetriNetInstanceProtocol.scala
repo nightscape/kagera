@@ -37,10 +37,7 @@ object PetriNetInstanceProtocol {
   /**
    * Command to fire a specific transition with input.
    */
-  case class FireTransition(
-    transitionId: Long,
-    input: Any,
-    correlationId: Option[Long] = None) extends Command
+  case class FireTransition(transitionId: Long, input: Any, correlationId: Option[Long] = None) extends Command
 
   /**
    * A common trait for all responses coming from a petri net instance.
@@ -60,9 +57,7 @@ object PetriNetInstanceProtocol {
    *
    * This message is only send in response to an Initialize message.
    */
-  case class Initialized[S](
-    marking: Marking,
-    state: S) extends Response
+  case class Initialized[S](marking: Marking, state: S) extends Response
 
   /**
    * Any message that is a response to a FireTransition command.
@@ -78,7 +73,8 @@ object PetriNetInstanceProtocol {
     override val transitionId: Long,
     consumed: Marking,
     produced: Marking,
-    result: InstanceState[S]) extends TransitionResponse
+    result: InstanceState[S]
+  ) extends TransitionResponse
 
   /**
    *  Response indicating that a transition has failed.
@@ -88,31 +84,23 @@ object PetriNetInstanceProtocol {
     consume: Marking,
     input: Any,
     reason: String,
-    strategy: ExceptionStrategy) extends TransitionResponse
+    strategy: ExceptionStrategy
+  ) extends TransitionResponse
 
   /**
    * Response indicating that the transition could not be fired because it is not enabled.
    */
-  case class TransitionNotEnabled(
-    override val transitionId: Long,
-    reason: String) extends TransitionResponse
+  case class TransitionNotEnabled(override val transitionId: Long, reason: String) extends TransitionResponse
 
   /**
    * The exception state of a transition.
    */
-  case class ExceptionState(
-    failureCount: Int,
-    failureReason: String,
-    failureStrategy: ExceptionStrategy)
+  case class ExceptionState(failureCount: Int, failureReason: String, failureStrategy: ExceptionStrategy)
 
   /**
    * Response containing the state of the process.
    */
-  case class InstanceState[S](
-      sequenceNr: Long,
-      marking: Marking,
-      state: S,
-      failures: Map[Long, ExceptionState]) {
+  case class InstanceState[S](sequenceNr: Long, marking: Marking, state: S, failures: Map[Long, ExceptionState]) {
 
     def hasFailed(transitionId: Long): Boolean = failures.contains(transitionId)
   }

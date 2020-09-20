@@ -19,7 +19,6 @@ import scalax.collection.edge.WLDiEdge
  *
  * Since each transition is different in what kind of in/out places & edges it can take we should probably not
  * create a general connectivity DSL based on the base trait Transition.
- *
  */
 package object dsl {
 
@@ -28,10 +27,12 @@ package object dsl {
   }
 
   implicit class PlaceDSL[C](p: Place[C]) {
-    def ~>(t: Transition[_, _, _], weight: Long = 1, filter: C ⇒ Boolean = token ⇒ true): Arc = arc(p, t, weight, filter)
+    def ~>(t: Transition[_, _, _], weight: Long = 1, filter: C ⇒ Boolean = token ⇒ true): Arc =
+      arc(p, t, weight, filter)
   }
 
-  def arc(t: Transition[_, _, _], p: Place[_], weight: Long): Arc = WLDiEdge[Node, String](Right(t), Left(p))(weight, "")
+  def arc(t: Transition[_, _, _], p: Place[_], weight: Long): Arc =
+    WLDiEdge[Node, String](Right(t), Left(p))(weight, "")
 
   def arc[C](p: Place[C], t: Transition[_, _, _], weight: Long, filter: C ⇒ Boolean = (token: C) ⇒ true): Arc = {
     val innerEdge = new PTEdgeImpl[C](weight, filter)
@@ -39,18 +40,20 @@ package object dsl {
   }
 
   def constantTransition[I, O, S](id: Long, label: Option[String] = None, automated: Boolean = false, constant: O) =
-    new AbstractTransition[I, O, S](id, label.getOrElse(s"t$id"), automated, Duration.Undefined) with IdentityTransition[I, O, S] {
+    new AbstractTransition[I, O, S](id, label.getOrElse(s"t$id"), automated, Duration.Undefined)
+      with IdentityTransition[I, O, S] {
 
       override val toString = label
 
       override def apply(inAdjacent: MultiSet[Place[_]], outAdjacent: MultiSet[Place[_]]) =
-        (marking, state, input) ⇒ IO.delay {
-          val produced = outAdjacent.map {
-            case (place, weight) ⇒ place -> Map(constant -> weight)
-          }.toMarking
+        (marking, state, input) ⇒
+          IO.delay {
+            val produced = outAdjacent.map { case (place, weight) ⇒
+              place -> Map(constant -> weight)
+            }.toMarking
 
-          (produced, constant)
-        }
+            (produced, constant)
+          }
     }
 
   def nullTransition[S](id: Long, label: Option[String] = None, automated: Boolean = false): Transition[Unit, Unit, S] =

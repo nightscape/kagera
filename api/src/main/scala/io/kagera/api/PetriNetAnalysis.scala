@@ -25,8 +25,11 @@ object PetriNetAnalysis {
     // transitions without input may always fire
     val c = pn.transitions.filter(t ⇒ pn.incomingPlaces(t).isEmpty)
 
-    val outT = m0.keys.map(pn.outgoingTransitions).reduceOption(_ ++ _).getOrElse(Set.empty).
-      filter(t ⇒ m0.isSubSet(pn.inMarking(t)))
+    val outT = m0.keys
+      .map(pn.outgoingTransitions)
+      .reduceOption(_ ++ _)
+      .getOrElse(Set.empty)
+      .filter(t ⇒ m0.isSubSet(pn.inMarking(t)))
 
     c ++ outT
   }

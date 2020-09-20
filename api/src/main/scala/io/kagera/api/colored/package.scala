@@ -64,29 +64,25 @@ package object colored {
       marking.+(p -> newTokens)
     }
 
-    def |-|(other: Marking): Marking = other.keySet.foldLeft(marking) {
-
-      case (result, place) ⇒
-        marking.get(place) match {
-          case None ⇒ result
-          case Some(tokens) ⇒
-            val newTokens = tokens.multisetDifference(other(place))
-            if (newTokens.isEmpty)
-              result - place
-            else
-              result + (place -> newTokens)
-        }
+    def |-|(other: Marking): Marking = other.keySet.foldLeft(marking) { case (result, place) ⇒
+      marking.get(place) match {
+        case None ⇒ result
+        case Some(tokens) ⇒
+          val newTokens = tokens.multisetDifference(other(place))
+          if (newTokens.isEmpty)
+            result - place
+          else
+            result + (place -> newTokens)
+      }
     }
 
-    def |+|(other: Marking): Marking = other.keySet.foldLeft(marking) {
-      case (result, place) ⇒
+    def |+|(other: Marking): Marking = other.keySet.foldLeft(marking) { case (result, place) ⇒
+      val newTokens = marking.get(place) match {
+        case None ⇒ other(place)
+        case Some(tokens) ⇒ tokens.multisetSum(other(place))
+      }
 
-        val newTokens = marking.get(place) match {
-          case None         ⇒ other(place)
-          case Some(tokens) ⇒ tokens.multisetSum(other(place))
-        }
-
-        result + (place -> newTokens)
+      result + (place -> newTokens)
     }
   }
 
@@ -116,7 +112,8 @@ package object colored {
   }
 
   implicit class ColoredPetriNetAdditions(petriNet: ColoredPetriNet) {
-    def getEdge(p: Place[_], t: Transition[_, _, _]): Option[PTEdge[Any]] = petriNet.innerGraph.findPTEdge(p, t).map(_.label.asInstanceOf[PTEdge[Any]])
+    def getEdge(p: Place[_], t: Transition[_, _, _]): Option[PTEdge[Any]] =
+      petriNet.innerGraph.findPTEdge(p, t).map(_.label.asInstanceOf[PTEdge[Any]])
   }
 
   implicit def toMarking(map: Map[Place[_], MultiSet[_]]): Marking = HMap[Place, MultiSet](map)

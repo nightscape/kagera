@@ -8,11 +8,13 @@ import io.kagera.api.colored.transitions.{ AbstractTransition, UncoloredTransiti
 import scala.concurrent.duration.Duration
 
 case class TransitionBehaviour[S, E](automated: Boolean, exceptionHandler: TransitionExceptionHandler, fn: S ⇒ E) {
-  def asTransition(id: Long, eventSource: S ⇒ E ⇒ S) = new AbstractTransition[Unit, E, S](id, s"t$id", automated, Duration.Undefined, exceptionHandler) with UncoloredTransition[Unit, E, S] {
-    override val toString = label
-    override val updateState = eventSource
-    override def produceEvent(consume: Marking, state: S, input: Unit): IO[E] = IO.delay { (fn(state)) }
-  }
+  def asTransition(id: Long, eventSource: S ⇒ E ⇒ S) =
+    new AbstractTransition[Unit, E, S](id, s"t$id", automated, Duration.Undefined, exceptionHandler)
+      with UncoloredTransition[Unit, E, S] {
+      override val toString = label
+      override val updateState = eventSource
+      override def produceEvent(consume: Marking, state: S, input: Unit): IO[E] = IO.delay { (fn(state)) }
+    }
 }
 
 trait SequenceNet[S, E] {
@@ -24,7 +26,9 @@ trait SequenceNet[S, E] {
   lazy val initialMarking = Marking(place(1) -> 1)
 
   def place(n: Int) = places(n - 1)
-  def transition(automated: Boolean = false, exceptionHandler: TransitionExceptionHandler = (e, n) ⇒ BlockTransition)(fn: S ⇒ E): TransitionBehaviour[S, E] = TransitionBehaviour(automated, exceptionHandler, fn)
+  def transition(automated: Boolean = false, exceptionHandler: TransitionExceptionHandler = (e, n) ⇒ BlockTransition)(
+    fn: S ⇒ E
+  ): TransitionBehaviour[S, E] = TransitionBehaviour(automated, exceptionHandler, fn)
 
   lazy val petriNet = {
     val nrOfSteps = sequence.size

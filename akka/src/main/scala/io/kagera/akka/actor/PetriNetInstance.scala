@@ -17,14 +17,10 @@ import scala.language.existentials
 
 object PetriNetInstance {
 
-  case class Settings(
-    evaluationStrategy: ExecutionContext,
-    idleTTL: Option[FiniteDuration])
+  case class Settings(evaluationStrategy: ExecutionContext, idleTTL: Option[FiniteDuration])
 
-  val defaultSettings: Settings = Settings(
-    evaluationStrategy = ExecutionContext.Implicits.global,
-    idleTTL = Some(5 minutes)
-  )
+  val defaultSettings: Settings =
+    Settings(evaluationStrategy = ExecutionContext.Implicits.global, idleTTL = Some(5 minutes))
 
   private case class IdleStop(seq: Long)
 
@@ -32,7 +28,11 @@ object PetriNetInstance {
 
   def instanceState[S](instance: Instance[S]): InstanceState[S] = {
     val failures = instance.failedJobs.map { e ⇒
-      e.transitionId -> PetriNetInstanceProtocol.ExceptionState(e.consecutiveFailureCount, e.failureReason, e.failureStrategy)
+      e.transitionId -> PetriNetInstanceProtocol.ExceptionState(
+        e.consecutiveFailureCount,
+        e.failureReason,
+        e.failureStrategy
+      )
     }.toMap
 
     InstanceState[S](instance.sequenceNr, instance.marking, instance.state, failures)
@@ -48,7 +48,8 @@ object PetriNetInstance {
 class PetriNetInstance[S](
   override val topology: ExecutablePetriNet[S],
   val settings: Settings,
-  executor: TransitionExecutor[S]) extends PersistentActor
+  executor: TransitionExecutor[S]
+) extends PersistentActor
     with ActorLogging
     with PetriNetInstanceRecovery[S] {
 
@@ -97,7 +98,6 @@ class PetriNetInstance[S](
       )
 
     case e @ TransitionFailedEvent(jobId, transitionId, timeStarted, timeFailed, consume, input, reason, strategy) ⇒
-
       log.debug(s"Received message: {}", e)
       log.warning(s"Transition '${topology.transitions.getById(transitionId)}' failed with: {}", reason)
 
@@ -110,13 +110,14 @@ class PetriNetInstance[S](
 
       strategy match {
         case RetryWithDelay(delay) ⇒
-          log.warning(s"Scheduling a retry of transition '${topology.transitions.getById(transitionId)}' in $delay milliseconds")
+          log.warning(
+            s"Scheduling a retry of transition '${topology.transitions.getById(transitionId)}' in $delay milliseconds"
+          )
           val originalSender = sender()
           system.scheduler.scheduleOnce(delay milliseconds) { executeJob(updatedInstance.jobs(jobId), originalSender) }
           updateAndRespond(applyEvent(instance)(e))
         case _ ⇒
-          persistEvent(instance, e)(
-            (applyEvent(instance) _).andThen(updateAndRespond _))
+          persistEvent(instance, e)((applyEvent(instance) _).andThen(updateAndRespond _))
       }
 
     case msg @ FireTransition(id, input, correlationId) ⇒
@@ -138,7 +139,6 @@ class PetriNetInstance[S](
   def step(instance: Instance[S]): Instance[S] = {
     fireAllEnabledTransitions.run(instance).value match {
       case (updatedInstance, jobs) ⇒
-
         if (jobs.isEmpty && updatedInstance.activeJobs.isEmpty)
           settings.idleTTL.foreach { ttl ⇒
             log.debug("Process has no running jobs, killing the actor in: {}", ttl)

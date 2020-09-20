@@ -1,10 +1,10 @@
 package io.kagera.akka.actor
 
-import akka.persistence.{PersistentActor, RecoveryCompleted}
+import akka.persistence.{ PersistentActor, RecoveryCompleted }
 import io.kagera.api.colored.ExecutablePetriNet
 import io.kagera.execution.EventSourcing._
-import io.kagera.execution.{EventSourcing, Instance}
-import io.kagera.persistence.{Serialization, messages}
+import io.kagera.execution.{ EventSourcing, Instance }
+import io.kagera.persistence.{ messages, Serialization }
 
 trait PetriNetInstanceRecovery[S] {
 
@@ -32,8 +32,8 @@ trait PetriNetInstanceRecovery[S] {
   }
 
   override def receiveRecover: Receive = {
-    case e: messages.Initialized      ⇒ applyToRecoveringState(e)
-    case e: messages.TransitionFired  ⇒ applyToRecoveringState(e)
+    case e: messages.Initialized ⇒ applyToRecoveringState(e)
+    case e: messages.TransitionFired ⇒ applyToRecoveringState(e)
     case e: messages.TransitionFailed ⇒ applyToRecoveringState(e)
     case RecoveryCompleted ⇒
       if (recoveringState.sequenceNr > 0)

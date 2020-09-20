@@ -22,7 +22,8 @@ object EventSourcing {
     timeCompleted: Long,
     consumed: Marking,
     produced: Marking,
-    output: Option[Any]) extends TransitionEvent
+    output: Option[Any]
+  ) extends TransitionEvent
 
   /**
    * An event describing the fact that a transition failed to fire.
@@ -35,14 +36,13 @@ object EventSourcing {
     consume: Marking,
     input: Option[Any],
     failureReason: String,
-    exceptionStrategy: ExceptionStrategy) extends TransitionEvent
+    exceptionStrategy: ExceptionStrategy
+  ) extends TransitionEvent
 
   /**
    * An event describing the fact that an instance was initialized.
    */
-  case class InitializedEvent(
-    marking: Marking,
-    state: Any) extends Event
+  case class InitializedEvent(marking: Marking, state: Any) extends Event
 
   def applyEvent[S](e: Event): State[Instance[S], Unit] = State.modify { instance ⇒
     e match {
@@ -64,7 +64,8 @@ object EventSourcing {
           Job[S, Any](e.jobId, instance.state, transition, e.consume, e.input, None)
         }
         val failureCount = job.failureCount + 1
-        val updatedJob = job.copy(failure = Some(ExceptionState(e.transitionId, failureCount, e.failureReason, e.exceptionStrategy)))
+        val updatedJob =
+          job.copy(failure = Some(ExceptionState(e.transitionId, failureCount, e.failureReason, e.exceptionStrategy)))
         instance.copy(jobs = instance.jobs + (job.id -> updatedJob))
     }
   }
