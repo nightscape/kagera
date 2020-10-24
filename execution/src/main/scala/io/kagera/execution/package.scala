@@ -2,14 +2,14 @@ package io.kagera
 
 import java.io.{ PrintWriter, StringWriter }
 
+import cats.ApplicativeError
 import cats.data.State
-import cats.effect.IO
+import cats.syntax.all._
 import io.kagera.api._
 import io.kagera.api.colored._
-import io.kagera.execution.EventSourcing._
+import io.kagera.execution.EventSourcing.{ TransitionEvent, _ }
 
 import scala.collection.Set
-import scala.concurrent.ExecutionContext
 
 package object execution {
 
@@ -25,7 +25,7 @@ package object execution {
         case Some(reason) =>
           (instance, Left(reason))
         case None =>
-          instance.process.enabledParameters(instance.availableMarking).get(transition) match {
+          instance.enabledParameters.get(transition) match {
             case None =>
               (instance, Left(s"Not enough consumable tokens"))
             case Some(params) =>
@@ -52,8 +52,7 @@ package object execution {
    * Finds the (optional) first transition that is automated & enabled
    */
   def fireFirstEnabled[S]: State[Instance[S], Option[Job[S, _]]] = State { instance =>
-    instance.process
-      .enabledParameters(instance.availableMarking)
+    instance.enabledParameters
       .find { case (t, markings) =>
         t.isAutomated && !instance.isBlockedReason(t.id).isDefined
       }
@@ -67,9 +66,9 @@ package object execution {
 
   def fireTransitionById[S](id: Long, input: Any): State[Instance[S], Either[String, Job[S, Any]]] =
     State
-      .inspect[Instance[S], Option[Transition[Any, Any, S]]] { instance =>
-        instance.process.transitions.findById(id).map(_.asInstanceOf[Transition[Any, Any, S]])
-      }
+      .inspect[Instance[S], Option[Transition[Any, Any, S]]](
+        _.transitionById(id).map(_.asInstanceOf[Transition[Any, Any, S]])
+      )
       .flatMap {
         case None => State.pure(Left(s"No transition exists with id $id"))
         case Some(t) => fireTransition(t, input)
@@ -87,13 +86,14 @@ package object execution {
   /**
    * Executes a job returning a Task[TransitionEvent]
    */
-  def runJobAsync[S, E](job: Job[S, E], executor: TransitionExecutor[IO, S])(implicit
-    S: ExecutionContext
-  ): IO[TransitionEvent] = {
+  def runJobAsync[F[_], S, E](job: Job[S, E], executor: TransitionExecutor[F, S])(implicit
+    applicativeError: ApplicativeError[F, Throwable]
+  ): F[TransitionEvent] = {
     val startTime = System.currentTimeMillis()
 
-    executor
-      .fireTransition(job.transition)(job.consume, job.processState, job.input)
+    val transitionFunction: TransitionFunction[F, Any, E, S] = executor.fireTransition(job.transition)
+    val transitionApplied: F[(Marking, E)] = transitionFunction(job.consume, job.processState, job.input)
+    transitionApplied
       .map { case (produced, out) =>
         TransitionFiredEvent(
           job.id,
@@ -103,17 +103,14 @@ package object execution {
           job.consume,
           produced,
           Some(out)
-        )
+        ): TransitionEvent
       }
       .handleErrorWith { case e: Throwable =>
-        val failureCount = job.failureCount + 1
-        val failureStrategy = job.transition.exceptionStrategy(e, failureCount)
-
         val sw = new StringWriter()
         e.printStackTrace(new PrintWriter(sw))
         val stackTraceString = sw.toString
 
-        IO(
+        applicativeError.pure(
           TransitionFailedEvent(
             job.id,
             job.transition.id,
@@ -122,7 +119,7 @@ package object execution {
             job.consume,
             Some(job.input),
             stackTraceString,
-            failureStrategy
+            job.transition.exceptionStrategy(e, job.failureCount + 1)
           )
         )
       }

@@ -10,7 +10,9 @@ object EventSourcing {
 
   sealed trait Event
 
-  sealed trait TransitionEvent extends Event
+  sealed trait TransitionEvent extends Event {
+    def transitionId: Long
+  }
 
   /**
    * An event describing the fact that a transition has fired in the petri net process.
@@ -49,7 +51,7 @@ object EventSourcing {
       case InitializedEvent(initialMarking, initialState) =>
         Instance[S](instance.process, 1, initialMarking, initialState.asInstanceOf[S], Map.empty)
       case e: TransitionFiredEvent =>
-        val t = instance.process.transitions.getById(e.transitionId).asInstanceOf[Transition[_, Any, S]]
+        val t = instance.transitionById(e.transitionId).asInstanceOf[Transition[_, Any, S]]
         val newState = e.output.map(t.updateState(instance.state)).getOrElse(instance.state)
 
         instance.copy(
@@ -59,10 +61,17 @@ object EventSourcing {
           jobs = instance.jobs - e.jobId
         )
       case e: TransitionFailedEvent =>
-        val job = instance.jobs.get(e.jobId).getOrElse {
-          val transition = instance.process.transitions.getById(e.transitionId).asInstanceOf[Transition[Any, Any, S]]
-          Job[S, Any](e.jobId, instance.state, transition, e.consume, e.input, None)
-        }
+        val job = instance.jobs.getOrElse(
+          e.jobId,
+          Job[S, Any](
+            e.jobId,
+            instance.state,
+            instance.transitionById(e.transitionId).asInstanceOf[Transition[Any, Any, S]],
+            e.consume,
+            e.input,
+            None
+          )
+        )
         val failureCount = job.failureCount + 1
         val updatedJob =
           job.copy(failure = Some(ExceptionState(e.transitionId, failureCount, e.failureReason, e.exceptionStrategy)))

@@ -7,27 +7,30 @@ val commonScalacOptions = Seq(
   "-feature",
   "-language:implicitConversions",
   "-language:postfixOps",
+  "-language:higherKinds",
   "-unchecked",
   "-deprecation",
   "-Xlog-reflective-calls"
 )
 
-lazy val basicSettings =
+lazy val defaultProjectSettings =
   Seq(
     organization := "io.kagera",
+    githubOwner := "xencura",
+    githubRepository := "kagera",
     crossScalaVersions := Seq("2.13.3", "2.12.12"),
     scalaVersion := crossScalaVersions.value.head,
     scalacOptions := commonScalacOptions
   )
 
-lazy val defaultProjectSettings = basicSettings ++ SonatypePublish.settings
+githubTokenSource := TokenSource.GitConfig("github.token")
 
 lazy val api = project
   .in(file("api"))
   .settings(defaultProjectSettings: _*)
   .settings(
     name := "kagera-api",
-    libraryDependencies ++= Seq(collectionCompat, scalaGraph, catsCore, fs2Core, scalatest % "test")
+    libraryDependencies ++= Seq(collectionCompat, scalaGraph, catsCore, catsEffect, fs2Core, scalatest % "test")
   )
 
 lazy val visualization = project
@@ -36,10 +39,23 @@ lazy val visualization = project
   .settings(defaultProjectSettings: _*)
   .settings(name := "kagera-visualization", libraryDependencies ++= Seq(scalaGraph, scalaGraphDot))
 
+lazy val execution = project
+  .in(file("execution"))
+  .dependsOn(api)
+  .settings(
+    defaultProjectSettings ++ Seq(
+      name := "kagera-execution",
+      libraryDependencies ++= Seq(
+        "org.scala-lang" % "scala-reflect" % scalaVersion.value,
+        scalaGraph,
+        scalatest % "test"
+      )
+    )
+  )
 
 lazy val akka = project
   .in(file("akka"))
-  .dependsOn(api)
+  .dependsOn(api, execution)
   .settings(
     defaultProjectSettings ++ Seq(
       name := "kagera-akka",
@@ -60,6 +76,27 @@ lazy val akka = project
         //PB.gens.java("2.6.1") -> (sourceManaged in Compile).value
         scalapb.gen() -> (sourceManaged in Compile).value
       )
+    )
+  )
+
+lazy val zio = project
+  .in(file("zio"))
+  .dependsOn(api, execution)
+  .settings(
+    defaultProjectSettings ++ Seq(
+      name := "kagera-zio",
+      resolvers += "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots",
+      libraryDependencies ++= Seq(
+        "org.scala-lang" % "scala-reflect" % scalaVersion.value,
+        zioCore,
+        zioInteropCats,
+        zioActors,
+        zioActorsPersistence,
+        scalaGraph,
+        zioTest % "test",
+        zioTestSbt % "test"
+      ),
+      testFrameworks := Seq(new TestFramework("zio.test.sbt.ZTestFramework"))
     )
   )
 
@@ -101,7 +138,7 @@ lazy val demoJvm = demo.jvm
   )
 
 lazy val root = Project("kagera", file("."))
-  .aggregate(api, akka, visualization)
+  .aggregate(api, akka, execution, visualization, zio)
   .enablePlugins(BuildInfoPlugin)
   .settings(defaultProjectSettings)
   .settings(
