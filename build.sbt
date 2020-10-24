@@ -13,15 +13,17 @@ val commonScalacOptions = Seq(
   "-Xlog-reflective-calls"
 )
 
-lazy val basicSettings =
+lazy val defaultProjectSettings =
   Seq(
     organization := "io.kagera",
+    githubOwner := "xencura",
+    githubRepository := "kagera",
     crossScalaVersions := Seq("2.13.3", "2.12.12"),
     scalaVersion := crossScalaVersions.value.head,
     scalacOptions := commonScalacOptions
   )
 
-lazy val defaultProjectSettings = basicSettings ++ SonatypePublish.settings
+githubTokenSource := TokenSource.GitConfig("github.token")
 
 lazy val api = project
   .in(file("api"))
